@@ -61,15 +61,15 @@ export default function ProfilePage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-2 mb-6">
           {[
             { label: 'Серия', value: profile?.streak || 0, suffix: '🔥' },
-            { label: 'Отговорени', value: totalCompleted, suffix: '✅' },
+            { label: 'Отговор.', value: totalCompleted, suffix: '✅' },
             { label: 'Напредък', value: `${Math.round((totalCompleted / totalQ) * 100)}%`, suffix: '📈' },
           ].map(s => (
-            <div key={s.label} className={`rounded-2xl p-4 text-center ${t.card}`}>
-              <div className={`text-2xl font-black ${t.heading}`}>{s.value}</div>
-              <div className={`text-xs ${t.textMuted}`}>{s.suffix} {s.label}</div>
+            <div key={s.label} className={`rounded-2xl p-3 text-center ${t.card}`}>
+              <div className={`text-xl font-black ${t.heading}`}>{s.value}</div>
+              <div className={`text-[11px] ${t.textMuted} mt-0.5`}>{s.suffix} {s.label}</div>
             </div>
           ))}
         </div>

@@ -1,0 +1,45 @@
+{
+  "name": "MedVibe — Учи медицина",
+  "short_name": "MedVibe",
+  "description": "Интерактивна платформа за медицински студенти в България. Анатомия, Хистология, Биология, Химия.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#fdf2f8",
+  "theme_color": "#f472b6",
+  "categories": ["education", "medical", "health"],
+  "lang": "bg",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Конспект",
+      "short_name": "Конспект",
+      "description": "Отвори конспекта",
+      "url": "/study",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Бърз тест",
+      "short_name": "Тест",
+      "description": "Стартирай бърз тест",
+      "url": "/quiz",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    }
+  ]
+}

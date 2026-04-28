@@ -232,7 +232,7 @@ function QuizContent() {
 
           <div className={`rounded-3xl p-6 mb-8 ${t.card}`}>
             <h2 className={`font-bold mb-4 ${t.heading}`}>Времево ограничение</h2>
-            <div className="flex gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 { label: '3 мин', val: 180 },
                 { label: '5 мин', val: 300 },
@@ -242,7 +242,7 @@ function QuizContent() {
                 <button
                   key={opt.val}
                   onClick={() => setTimeLimit(opt.val)}
-                  className={`flex-1 py-3 rounded-xl font-bold text-xs sm:text-sm transition-all border-2 ${
+                  className={`py-3 rounded-xl font-bold text-sm transition-all border-2 ${
                     timeLimit === opt.val
                       ? `${t.primary} text-white border-transparent`
                       : `${t.card} ${t.text} border-transparent ${t.cardHover}`
@@ -275,15 +275,16 @@ function QuizContent() {
       <AppShell>
         <div className="max-w-2xl mx-auto px-4 py-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <span className={`text-sm font-bold ${t.textMuted}`}>{current + 1} / {quizQuestions.length}</span>
+          <div className="flex items-center justify-between mb-4 gap-2">
+            <span className={`text-sm font-bold ${t.textMuted} whitespace-nowrap`}>{current + 1} / {quizQuestions.length}</span>
             {timeLimit < 99999 && (
-              <span className={`text-lg font-black tabular-nums ${timeColor} ${timeLeft < 10 ? 'animate-pulse' : ''}`}>
+              <span className={`text-lg font-black tabular-nums ${timeColor} ${timeLeft < 10 ? 'animate-pulse' : ''} mx-auto`}>
                 ⏱ {mins}:{secs.toString().padStart(2, '0')}
               </span>
             )}
-            <span className={`text-sm font-bold ${t.primaryText}`}>
-              {subjects.find(s => s.id === q.subject)?.emoji} {subjects.find(s => s.id === q.subject)?.name}
+            <span className={`text-sm font-bold ${t.primaryText} whitespace-nowrap`}>
+              {subjects.find(s => s.id === q.subject)?.emoji}
+              <span className="hidden xs:inline"> {subjects.find(s => s.id === q.subject)?.name}</span>
             </span>
           </div>
 

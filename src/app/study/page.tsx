@@ -48,14 +48,14 @@ export default function StudyPage() {
           </div>
           <button
             onClick={() => setShowPicker(v => !v)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-semibold text-sm transition-all hover:scale-105 ${
+            className={`flex items-center gap-2 px-3 py-2.5 rounded-2xl font-semibold text-sm transition-all hover:scale-105 flex-shrink-0 ${
               university
                 ? `bg-gradient-to-r ${university.gradient} text-white shadow-lg`
                 : `${t.card} ${t.text} ${t.cardHover}`
             }`}
           >
             <span>{university ? university.emoji : '🏫'}</span>
-            <span className="hidden sm:inline">{university ? university.shortName : 'Избери университет'}</span>
+            <span className="max-w-[100px] truncate">{university ? university.shortName : 'Университет'}</span>
             <span>▾</span>
           </button>
         </div>
@@ -131,13 +131,14 @@ export default function StudyPage() {
 
         {/* University emphasis banner */}
         {university && !showPicker && (
-          <div className={`rounded-2xl px-5 py-3 mb-6 bg-gradient-to-r ${university.gradient} text-white flex items-center gap-3 anim-up`}>
-            <span className="text-xl">{university.emoji}</span>
-            <div className="flex-1 min-w-0">
+          <div className={`rounded-2xl px-4 py-3 mb-6 bg-gradient-to-r ${university.gradient} text-white flex items-center gap-2 anim-up`}>
+            <span className="text-xl flex-shrink-0">{university.emoji}</span>
+            <div className="flex-1 min-w-0 overflow-hidden">
               <span className="font-bold text-sm">{university.shortName}</span>
-              <span className="text-white/70 text-xs ml-2">— {emphasisCount} теми с висока изпитна тежест маркирани</span>
+              <span className="text-white/70 text-xs ml-1.5 hidden sm:inline">— {emphasisCount} теми с висока тежест</span>
+              <span className="text-white/70 text-xs ml-1.5 sm:hidden">· {emphasisCount} важни теми</span>
             </div>
-            <button onClick={() => setShowPicker(true)} className="text-xs text-white/70 hover:text-white">Смени ▸</button>
+            <button onClick={() => setShowPicker(true)} className="text-xs text-white/70 hover:text-white flex-shrink-0 whitespace-nowrap">Смени ▸</button>
           </div>
         )}
 

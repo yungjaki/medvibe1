@@ -1,32 +1,93 @@
 @import "tailwindcss";
 
-* {
-  box-sizing: border-box;
+/* ─── Reset & Base ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
-html, body {
+body {
   margin: 0;
   padding: 0;
+  min-height: 100%;
+  /* Prevent horizontal overflow globally */
+  overflow-x: hidden;
+  /* Smooth scrolling */
+  -webkit-overflow-scrolling: touch;
+  /* Prevent tap highlight on iOS */
+  -webkit-tap-highlight-color: transparent;
 }
 
+/* ─── iOS Safe Area Utilities ──────────────────────────────────── */
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+.pt-safe {
+  padding-top: max(0rem, env(safe-area-inset-top));
+}
+.bottom-safe {
+  bottom: max(0px, env(safe-area-inset-bottom));
+}
+
+/* ─── Scrollbar hide ───────────────────────────────────────────── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ─── Prevent overflow on cards/text ──────────────────────────── */
+.overflow-wrap-anywhere { overflow-wrap: anywhere; word-break: break-word; }
+
+/* ─── Animations ───────────────────────────────────────────────── */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-10px); }
 }
-
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 5px rgba(168, 85, 247, 0.4); }
   50% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.8); }
 }
-
 @keyframes shimmer {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes popIn {
+  0%   { transform: scale(0.82); opacity: 0; }
+  60%  { transform: scale(1.06); }
+  100% { transform: scale(1);    opacity: 1; }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+@keyframes fall {
+  to { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideDown {
+  from { opacity: 0; max-height: 0; }
+  to   { opacity: 1; max-height: 2000px; }
 }
 
-.animate-float { animation: float 3s ease-in-out infinite; }
-.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-float        { animation: float 3s ease-in-out infinite; }
+.animate-pulse-glow   { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-slide-up     { animation: slideUp 0.35s ease-out both; }
+.animate-pop-in       { animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-shake        { animation: shake 0.4s ease-in-out; }
+.animate-fade-in      { animation: fadeIn 0.3s ease-out both; }
 
+/* ─── Shimmer text ─────────────────────────────────────────────── */
 .shimmer-text {
   background: linear-gradient(90deg, #f472b6, #a855f7, #60a5fa, #a855f7, #f472b6);
   background-size: 200% auto;
@@ -35,7 +96,6 @@ html, body {
   background-clip: text;
   animation: shimmer 3s linear infinite;
 }
-
 .sharp-shimmer-text {
   background: linear-gradient(90deg, #06b6d4, #3b82f6, #8b5cf6, #3b82f6, #06b6d4);
   background-size: 200% auto;
@@ -45,5 +105,26 @@ html, body {
   animation: shimmer 3s linear infinite;
 }
 
-.scrollbar-hide::-webkit-scrollbar { display: none; }
-.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+/* ─── 3D Card flip (Flashcard game) ───────────────────────────── */
+.card-3d          { perspective: 800px; }
+.card-inner       { position: relative; transform-style: preserve-3d; transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1); }
+.card-inner.flipped { transform: rotateY(180deg); }
+.card-face        { backface-visibility: hidden; -webkit-backface-visibility: hidden; position: absolute; inset: 0; }
+.card-back-face   { transform: rotateY(180deg); }
+
+/* ─── Mobile touch improvements ────────────────────────────────── */
+button, a {
+  /* Minimum touch target */
+  min-height: 44px;
+  /* Remove iOS button styling */
+  -webkit-appearance: none;
+}
+
+/* But don't force 44px height on inline/icon elements */
+button.no-min-h, a.no-min-h { min-height: unset; }
+
+/* Input — prevent zoom on focus (requires font-size ≥ 16px on iOS) */
+input, select, textarea {
+  font-size: 16px !important;
+  -webkit-appearance: none;
+}

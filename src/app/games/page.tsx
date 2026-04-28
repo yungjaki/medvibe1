@@ -349,9 +349,9 @@ function MatchingGame({ onBack }: { onBack: () => void }) {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       <GameStyles />
-      <div className="flex justify-between items-center mb-6">
-        <button onClick={onBack} className={`text-sm ${t.textMuted}`}>← Обратно</button>
-        <span className={`text-sm font-bold ${t.textMuted}`}>{matched.length}/{pairs.length} свързани · {elapsed}s · {moves} хода</span>
+      <div className="flex justify-between items-center mb-4 gap-2">
+        <button onClick={onBack} className={`text-sm ${t.textMuted} whitespace-nowrap flex-shrink-0`}>← Обратно</button>
+        <span className={`text-xs font-bold ${t.textMuted} text-right`}>{matched.length}/{pairs.length} · {elapsed}s · {moves} хода</span>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-3">
@@ -872,7 +872,7 @@ function MemoryMatch({ onBack }: { onBack: () => void }) {
         <span className={`text-sm font-bold ${t.textMuted}`}>{matchedCount}/{totalPairs} двойки · {moves} хода · {elapsed}s</span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-2">
         {cards.map((card, i) => {
           const isWrong = wrongPair.includes(card.id);
           return (
@@ -880,7 +880,7 @@ function MemoryMatch({ onBack }: { onBack: () => void }) {
               key={card.id}
               onClick={() => flip(card)}
               disabled={card.matched}
-              className={`rounded-2xl aspect-square flex items-center justify-center p-2 text-xs font-bold text-center transition-all duration-300 border-2 anim-slide-up ${
+              className={`rounded-xl aspect-square flex items-center justify-center p-1.5 text-[10px] font-bold text-center transition-all duration-300 border-2 anim-slide-up leading-tight ${
                 card.matched
                   ? `${t.correct} opacity-70 scale-95`
                   : card.flipped
@@ -892,9 +892,9 @@ function MemoryMatch({ onBack }: { onBack: () => void }) {
               style={{ animationDelay: `${i * 0.03}s` }}
             >
               {card.flipped || card.matched ? (
-                <span className="leading-tight">{card.text}</span>
+                <span className="break-words overflow-hidden" style={{ wordBreak: 'break-word', hyphens: 'auto' }}>{card.text}</span>
               ) : (
-                <span className={`text-2xl ${t.textMuted}`}>?</span>
+                <span className={`text-xl ${t.textMuted}`}>?</span>
               )}
             </button>
           );

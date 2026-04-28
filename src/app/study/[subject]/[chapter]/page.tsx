@@ -167,12 +167,12 @@ export default function ChapterPage({ params }: Props) {
 
       <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
-        <div className={`flex items-center gap-2 text-sm mb-6 ${t.textMuted}`}>
-          <Link href="/study" className="hover:underline">Конспект</Link>
-          <span>›</span>
-          <Link href={`/study?subject=${subject}`} className="hover:underline capitalize">{subjectLabels[subject]}</Link>
-          <span>›</span>
-          <span className={t.text}>{chapter.title}</span>
+        <div className={`flex items-center gap-1.5 text-sm mb-6 ${t.textMuted} overflow-hidden`}>
+          <Link href="/study" className="hover:underline whitespace-nowrap">Конспект</Link>
+          <span className="flex-shrink-0">›</span>
+          <Link href={`/study?subject=${subject}`} className="hover:underline whitespace-nowrap">{subjectLabels[subject]}</Link>
+          <span className="flex-shrink-0">›</span>
+          <span className={`${t.text} truncate`}>{chapter.title}</span>
         </div>
 
         {/* Chapter header */}

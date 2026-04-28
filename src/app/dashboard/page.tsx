@@ -48,12 +48,13 @@ export default function DashboardPage() {
 
         {/* XP Progress bar */}
         <div className={`rounded-2xl p-5 mb-6 ${t.card}`}>
-          <div className="flex justify-between items-center mb-3">
-            <div>
+          <div className="flex justify-between items-center mb-3 gap-2">
+            <div className="min-w-0">
               <span className={`font-bold text-sm ${t.heading}`}>Ниво {profile?.level || 1}</span>
-              <span className={`ml-2 text-xs ${t.textMuted}`}>{xpInLevel}/100 XP до следващото ниво</span>
+              <span className={`ml-2 text-xs ${t.textMuted} hidden sm:inline`}>{xpInLevel}/100 XP до следващото ниво</span>
+              <span className={`ml-1 text-xs ${t.textMuted} sm:hidden`}>{xpInLevel}/100 XP</span>
             </div>
-            <div className={`text-sm font-bold ${t.primaryText}`}>⚡ {profile?.xp || 0} XP общо</div>
+            <div className={`text-sm font-bold ${t.primaryText} whitespace-nowrap flex-shrink-0`}>⚡ {profile?.xp || 0} XP</div>
           </div>
           <div className={`h-3 rounded-full ${t.progressBg}`}>
             <div
