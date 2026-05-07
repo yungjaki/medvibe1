@@ -108,10 +108,7 @@ export default function SubjectPage({ params }: Props) {
                       <div key={q.id} className={`px-5 py-3 flex items-center gap-3 text-sm ${t.textMuted}`}>
                         <span>{done ? '✅' : '⭕'}</span>
                         <span className="flex-1 truncate">{q.question}</span>
-                        {q.isPremium && !profile?.isPremium && (
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${t.badge}`}>⭐ Premium</span>
-                        )}
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${q.difficulty === 'easy' ? 'bg-green-100 text-green-600' : q.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600'}`}>
+<span className={`text-xs px-2 py-0.5 rounded-full ${q.difficulty === 'easy' ? 'bg-green-100 text-green-600' : q.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600'}`}>
                           {q.difficulty === 'easy' ? 'лесен' : q.difficulty === 'medium' ? 'среден' : 'труден'}
                         </span>
                       </div>

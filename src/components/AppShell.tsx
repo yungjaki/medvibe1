@@ -127,18 +127,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        {/* Premium CTA */}
-        {!profile?.isPremium && (
-          <div className="p-4 flex-shrink-0">
-            <Link
-              href="/profile#premium"
-              className={`block p-4 rounded-2xl text-center text-sm font-semibold transition-all hover:scale-105 ${t.primary} text-white shadow-lg`}
-            >
-              ⭐ Вземи Premium<br />
-              <span className="text-xs font-normal opacity-80">Пълен достъп за €9/мес</span>
-            </Link>
-          </div>
-        )}
       </aside>
 
       {/* ── Main Content ─────────────────────────────────────── */}

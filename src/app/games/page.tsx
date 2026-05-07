@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import AppShell from '@/components/AppShell';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
-import { questions, tfStatements, flashCards } from '@/lib/data/questions';
+import { questions, tfStatements, flashCards, riddles, Riddle } from '@/lib/data/questions';
 
-type GameType = 'menu' | 'speed' | 'matching' | 'truefalse' | 'flashcard' | 'memory';
+type GameType = 'menu' | 'speed' | 'matching' | 'truefalse' | 'flashcard' | 'memory' | 'riddle';
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -97,10 +97,10 @@ function Confetti() {
 // ─── SPEED ROUND ─────────────────────────────────────────────────────────────
 function SpeedRound({ onBack }: { onBack: () => void }) {
   const { t } = useTheme();
-  const { profile, updateXP } = useAuth();
+  const { updateXP } = useAuth();
   const [phase, setPhase] = useState<'idle' | 'countdown' | 'playing' | 'done'>('idle');
   const [countdown, setCountdown] = useState(3);
-  const [pool, setPool] = useState(shuffle(questions.filter(q => !q.isPremium || profile?.isPremium)).slice(0, 30));
+  const [pool, setPool] = useState(shuffle(questions).slice(0, 30));
   const [current, setCurrent] = useState(0);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -143,14 +143,14 @@ function SpeedRound({ onBack }: { onBack: () => void }) {
       setFeedback(null);
       setQKey(k => k + 1);
       if (current + 1 >= pool.length) {
-        const np = shuffle(questions.filter(q => !q.isPremium || profile?.isPremium)).slice(0, 30);
+        const np = shuffle(questions).slice(0, 30);
         setPool(np);
         setCurrent(0);
       } else {
         setCurrent(c => c + 1);
       }
     }, 500);
-  }, [phase, feedback, pool, current, streak, profile]);
+  }, [phase, feedback, pool, current, streak]);
 
   const start = () => {
     setPhase('countdown');
@@ -160,7 +160,7 @@ function SpeedRound({ onBack }: { onBack: () => void }) {
     setBestStreak(0);
     setTimeLeft(60);
     setCurrent(0);
-    setPool(shuffle(questions.filter(q => !q.isPremium || profile?.isPremium)).slice(0, 30));
+    setPool(shuffle(questions).slice(0, 30));
   };
 
   if (phase === 'idle' || phase === 'done') {
@@ -904,6 +904,204 @@ function MemoryMatch({ onBack }: { onBack: () => void }) {
   );
 }
 
+// ─── КОЙ СЪМ АЗ? (WHO AM I?) ─────────────────────────────────────────────────
+const ROUNDS = 5;
+
+function RiddleGame({ onBack }: { onBack: () => void }) {
+  const { t, mode } = useTheme();
+  const { updateXP } = useAuth();
+  const [phase, setPhase] = useState<'idle' | 'playing' | 'done'>('idle');
+  const [deck, setDeck] = useState<Riddle[]>([]);
+  const [current, setCurrent] = useState(0);
+  const [cluesShown, setCluesShown] = useState(1);
+  const [chosen, setChosen] = useState<string | null>(null);
+  const [score, setScore] = useState(0);
+  const [roundScores, setRoundScores] = useState<number[]>([]);
+  const [confetti, setConfetti] = useState(false);
+  const [cardKey, setCardKey] = useState(0);
+
+  const start = () => {
+    setDeck(shuffle(riddles).slice(0, ROUNDS));
+    setCurrent(0);
+    setCluesShown(1);
+    setChosen(null);
+    setScore(0);
+    setRoundScores([]);
+    setConfetti(false);
+    setCardKey(0);
+    setPhase('playing');
+  };
+
+  const handleAnswer = (answer: string) => {
+    if (chosen) return;
+    setChosen(answer);
+    const riddle = deck[current];
+    const isCorrect = answer === riddle.answer;
+    const pts = isCorrect ? (4 - cluesShown) : 0; // 3, 2, 1 or 0 points
+    setScore(s => s + pts);
+    setRoundScores(rs => [...rs, pts]);
+  };
+
+  const handleNext = () => {
+    if (current + 1 >= deck.length) {
+      const total = roundScores.reduce((a, b) => a + b, 0) + (chosen === deck[current]?.answer ? (4 - cluesShown) : 0);
+      updateXP(total * 10);
+      if (total === ROUNDS * 3) setConfetti(true);
+      setPhase('done');
+    } else {
+      setCurrent(c => c + 1);
+      setCluesShown(1);
+      setChosen(null);
+      setCardKey(k => k + 1);
+    }
+  };
+
+  const riddle = deck[current];
+  const totalScore = roundScores.reduce((a, b) => a + b, 0);
+
+  if (phase === 'idle' || phase === 'done') {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-8">
+        {confetti && <Confetti />}
+        <GameStyles />
+        <button onClick={onBack} className={`text-sm mb-6 ${t.textMuted}`}>← Обратно</button>
+        <div className={`rounded-3xl p-8 text-center ${t.card} anim-slide-up`}>
+          <div className="text-6xl mb-4">🔍</div>
+          <h2 className={`text-3xl font-black mb-2 ${t.heading}`}>Кой съм аз?</h2>
+          <p className={`${t.textMuted} mb-6`}>
+            Прочети улики една по една и познай термина! Отговори по-рано → повече точки (3→2→1).
+            {' '}{ROUNDS} рунда.
+          </p>
+          {phase === 'done' && (
+            <div className="mb-6 space-y-3">
+              <div className={`text-5xl font-black bg-gradient-to-r ${t.xpBar} bg-clip-text text-transparent anim-pop`}>
+                {totalScore}/{ROUNDS * 3}
+              </div>
+              <div className={`text-sm ${t.textMuted}`}>точки · +{totalScore * 10} XP</div>
+              <div className="flex flex-wrap justify-center gap-2 mt-2">
+                {roundScores.map((pts, i) => (
+                  <span
+                    key={i}
+                    className={`w-10 h-10 rounded-full font-black text-sm flex items-center justify-center ${
+                      pts === 3 ? 'bg-green-400 text-white' :
+                      pts === 2 ? 'bg-yellow-400 text-white' :
+                      pts === 1 ? 'bg-orange-400 text-white' :
+                      'bg-red-400 text-white'
+                    }`}
+                  >
+                    {pts}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <button onClick={start} className={`w-full py-4 rounded-2xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 ${t.primary} shadow-lg`}>
+            {phase === 'done' ? '🔄 Играй отново' : '🔍 Старт!'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const isCorrect = chosen === riddle.answer;
+  const isWrong = chosen !== null && !isCorrect;
+  const pointsAvailable = 4 - cluesShown;
+  const options = shuffle([riddle.answer, ...riddle.decoys]);
+
+  return (
+    <div className="max-w-lg mx-auto px-4 py-6">
+      <GameStyles />
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <button onClick={onBack} className={`text-sm ${t.textMuted} whitespace-nowrap`}>← Обратно</button>
+        <span className={`text-sm font-bold ${t.textMuted}`}>Рунд {current + 1}/{ROUNDS}</span>
+        <span className={`text-sm font-black ${t.primaryText} whitespace-nowrap`}>⚡{totalScore}</span>
+      </div>
+
+      {/* Progress bar */}
+      <div className={`h-2 rounded-full mb-5 ${t.progressBg}`}>
+        <div
+          className={`h-2 rounded-full bg-gradient-to-r ${t.xpBar} transition-all duration-500`}
+          style={{ width: `${(current / ROUNDS) * 100}%` }}
+        />
+      </div>
+
+      {/* Points badge */}
+      <div className="flex justify-center mb-4">
+        <div className={`px-4 py-1.5 rounded-full font-bold text-sm ${
+          pointsAvailable === 3 ? 'bg-green-100 text-green-600' :
+          pointsAvailable === 2 ? 'bg-yellow-100 text-yellow-600' :
+          'bg-orange-100 text-orange-600'
+        }`}>
+          {chosen ? (isCorrect ? `+${isCorrect ? (4 - cluesShown) : 0} точки ✅` : '0 точки ❌') : `Познай сега → +${pointsAvailable} т.`}
+        </div>
+      </div>
+
+      {/* Clues card */}
+      <div key={`riddle-${cardKey}`} className={`rounded-3xl p-6 mb-4 ${t.card} anim-slide-up`}>
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-3xl">{riddle.emoji}</span>
+          <div className={`text-xs font-bold uppercase tracking-wider ${t.textMuted}`}>{riddle.subject}</div>
+        </div>
+        <div className="space-y-3">
+          {riddle.clues.slice(0, cluesShown).map((clue, i) => (
+            <div
+              key={i}
+              className={`flex gap-3 items-start rounded-2xl px-4 py-3 anim-slide-up ${
+                mode === 'soft' ? 'bg-pink-50' : 'bg-gray-800'
+              }`}
+              style={{ animationDelay: `${i * 0.1}s` }}
+            >
+              <span className={`font-black text-lg flex-shrink-0 ${
+                i === 0 ? 'text-green-500' : i === 1 ? 'text-yellow-500' : 'text-orange-500'
+              }`}>{i + 1}</span>
+              <p className={`text-sm leading-relaxed ${t.text}`}>{clue}</p>
+            </div>
+          ))}
+          {!chosen && cluesShown < 3 && (
+            <button
+              onClick={() => setCluesShown(c => c + 1)}
+              className={`w-full py-2.5 rounded-2xl text-sm font-semibold border-2 border-dashed transition-all hover:scale-[1.01] ${
+                mode === 'soft' ? 'border-pink-300 text-pink-500 hover:bg-pink-50' : 'border-gray-600 text-gray-400 hover:bg-gray-800'
+              }`}
+            >
+              👁 Покажи следваща улика (-1 точка)
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Answer options */}
+      {!chosen ? (
+        <div className="grid grid-cols-2 gap-3">
+          {options.map((opt, i) => (
+            <button
+              key={opt}
+              onClick={() => handleAnswer(opt)}
+              className={`p-4 rounded-2xl font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98] border-2 border-transparent ${t.card} ${t.text} ${t.cardHover} anim-slide-up`}
+              style={{ animationDelay: `${i * 0.05}s` }}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3 anim-slide-up">
+          <div className={`rounded-2xl p-4 text-center font-black text-2xl ${isCorrect ? t.correct : t.wrong}`}>
+            {isCorrect ? `✅ ${riddle.answer}!` : `❌ Беше: ${riddle.answer}`}
+          </div>
+          <button
+            onClick={handleNext}
+            className={`w-full py-3.5 rounded-2xl font-bold text-white transition-all hover:scale-105 active:scale-95 ${t.primary}`}
+          >
+            {current + 1 >= deck.length ? '🏁 Виж резултата' : 'Следващ рунд →'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── GAMES MENU ───────────────────────────────────────────────────────────────
 const gameList = [
   {
@@ -946,6 +1144,14 @@ const gameList = [
     gradient: 'from-rose-400 to-pink-500',
     shadow: 'shadow-rose-200/40',
   },
+  {
+    id: 'riddle',
+    title: 'Кой съм аз?',
+    desc: '5 рунда · улики → познай термина · отговори рано за повече точки',
+    emoji: '🔍',
+    gradient: 'from-violet-500 to-indigo-600',
+    shadow: 'shadow-violet-200/40',
+  },
 ] as const;
 
 export default function GamesPage() {
@@ -957,6 +1163,7 @@ export default function GamesPage() {
   if (game === 'truefalse') return <AppShell><TrueFalseBlitz onBack={() => setGame('menu')} /></AppShell>;
   if (game === 'flashcard') return <AppShell><FlashcardFlip onBack={() => setGame('menu')} /></AppShell>;
   if (game === 'memory') return <AppShell><MemoryMatch onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'riddle') return <AppShell><RiddleGame onBack={() => setGame('menu')} /></AppShell>;
 
   return (
     <AppShell>
@@ -964,7 +1171,7 @@ export default function GamesPage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className={`text-3xl font-black ${t.heading}`}>Игри 🎮</h1>
-          <p className={`mt-1 ${t.textMuted}`}>5 начина да учиш докато се забавляваш</p>
+          <p className={`mt-1 ${t.textMuted}`}>6 начина да учиш докато се забавляваш</p>
         </div>
 
         <div className="space-y-4">

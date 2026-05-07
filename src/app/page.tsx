@@ -194,7 +194,7 @@ export default function LandingPage() {
           <span className="text-xl">🩺</span>
           <span className={`font-bold ${isSoft ? 'text-gray-600' : 'text-gray-400'}`}>MedVibe</span>
         </div>
-        <p className="text-sm">Направено с ❤️ за медицински студенти в България</p>
+        <p className="text-sm">Направено с ❤️ за кандидат медицински студенти в България</p>
       </footer>
     </div>
   );

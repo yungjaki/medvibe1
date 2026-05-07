@@ -166,30 +166,6 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Premium section */}
-        {!profile?.isPremium && (
-          <div id="premium" className={`rounded-3xl overflow-hidden mb-6`}>
-            <div className={`p-6 bg-gradient-to-br ${mode === 'soft' ? 'from-pink-400 to-purple-500' : 'from-cyan-500 to-blue-700'} text-white`}>
-              <h3 className="text-xl font-black mb-1">⭐ Вземи Premium</h3>
-              <p className="text-white/80 text-sm mb-4">Пълен достъп до всички функции</p>
-              <ul className="space-y-2 text-sm mb-5">
-                {['Неограничени въпроси', 'AI обяснения', 'Симулация на изпит', 'Детайлна статистика'].map(f => (
-                  <li key={f} className="flex items-center gap-2">
-                    <span>✅</span> {f}
-                  </li>
-                ))}
-              </ul>
-              <div className="flex items-end gap-2 mb-4">
-                <span className="text-4xl font-black">€9</span>
-                <span className="text-white/60 pb-1">/месец</span>
-              </div>
-              <button className="w-full py-3 rounded-xl bg-white font-bold text-purple-600 hover:bg-gray-100 transition-all hover:scale-105">
-                Абонирай се сега
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Logout */}
         <div className={`rounded-3xl p-5 ${t.card}`}>
           {!showLogoutConfirm ? (

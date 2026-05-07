@@ -90,7 +90,6 @@ function QuizContent() {
 
   const buildQuiz = useCallback(() => {
     let pool = questions.filter(q => {
-      if (!profile?.isPremium && q.isPremium) return false;
       if (selectedSubject !== 'all' && q.subject !== selectedSubject) return false;
       return true;
     });
@@ -104,7 +103,7 @@ function QuizContent() {
     setTimerActive(true);
     setQuestionKey(k => k + 1);
     setPhase('quiz');
-  }, [selectedSubject, questionCount, timeLimit, profile]);
+  }, [selectedSubject, questionCount, timeLimit]);
 
   useEffect(() => {
     if (preSubject && phase === 'quiz' && quizQuestions.length === 0) {
@@ -162,7 +161,6 @@ function QuizContent() {
   const timeColor = timeLeft < 30 ? 'text-red-500' : timeLeft < 60 ? 'text-yellow-500' : t.primaryText;
 
   const availableCount = questions.filter(q => {
-    if (!profile?.isPremium && q.isPremium) return false;
     if (selectedSubject !== 'all' && q.subject !== selectedSubject) return false;
     return true;
   }).length;
