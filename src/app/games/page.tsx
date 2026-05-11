@@ -6,7 +6,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { questions, tfStatements, flashCards, riddles, Riddle } from '@/lib/data/questions';
 
-type GameType = 'menu' | 'speed' | 'matching' | 'truefalse' | 'flashcard' | 'memory' | 'riddle';
+type GameType = 'menu' | 'speed' | 'matching' | 'truefalse' | 'flashcard' | 'memory' | 'riddle' | 'dna' | 'balancer' | 'organelle';
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -1102,6 +1102,417 @@ function RiddleGame({ onBack }: { onBack: () => void }) {
   );
 }
 
+// ─── DNA BUILDER ─────────────────────────────────────────────────────────────
+const DNA_TEMPLATE = ['A','T','G','C','G','A','T','T','C','G','A','T','G','C','G','A'] as const;
+type Base = 'A' | 'T' | 'G' | 'C';
+const COMPLEMENT: Record<Base, Base> = { A:'T', T:'A', G:'C', C:'G' };
+const BASE_COLOR: Record<Base, string> = {
+  A: 'bg-pink-500 text-white',
+  T: 'bg-blue-500 text-white',
+  G: 'bg-emerald-500 text-white',
+  C: 'bg-amber-500 text-white',
+};
+const BASE_PAIR_COLOR: Record<Base, string> = {
+  A: 'bg-pink-100 text-pink-700 border-pink-300',
+  T: 'bg-blue-100 text-blue-700 border-blue-300',
+  G: 'bg-emerald-100 text-emerald-700 border-emerald-300',
+  C: 'bg-amber-100 text-amber-700 border-amber-300',
+};
+
+function DNABuilder({ onBack }: { onBack: () => void }) {
+  const { t } = useTheme();
+  const { updateXP } = useAuth();
+  const [answers, setAnswers] = useState<(Base | null)[]>(Array(16).fill(null));
+  const [errors, setErrors] = useState<boolean[]>(Array(16).fill(false));
+  const [done, setDone] = useState(false);
+  const [score, setScore] = useState(0);
+  const [xpGiven, setXpGiven] = useState(false);
+
+  const pick = (i: number, base: Base) => {
+    if (done || answers[i] !== null) return;
+    const correct = COMPLEMENT[DNA_TEMPLATE[i]];
+    const isCorrect = base === correct;
+    setAnswers(a => { const n = [...a]; n[i] = base; return n; });
+    if (!isCorrect) {
+      setErrors(e => { const n = [...e]; n[i] = true; return n; });
+    } else {
+      setScore(s => s + (errors[i] ? 1 : 2));
+    }
+    const nextAnswers = [...answers];
+    nextAnswers[i] = base;
+    if (nextAnswers.every(a => a !== null)) {
+      setDone(true);
+      if (!xpGiven) { updateXP(score + (isCorrect && !errors[i] ? 2 : 1)); setXpGiven(true); }
+    }
+  };
+
+  const reset = () => {
+    setAnswers(Array(16).fill(null));
+    setErrors(Array(16).fill(false));
+    setDone(false);
+    setScore(0);
+    setXpGiven(false);
+  };
+
+  const correctCount = answers.filter((a, i) => a === COMPLEMENT[DNA_TEMPLATE[i]]).length;
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-6">
+      <GameStyles />
+      <button onClick={onBack} className={`mb-4 text-sm font-semibold ${t.primaryText} hover:opacity-70`}>← Обратно</button>
+      <h2 className={`text-2xl font-black mb-1 ${t.heading}`}>🧬 ДНК Строител</h2>
+      <p className={`text-sm ${t.textMuted} mb-5`}>Избери комплементарната база за всяка позиция (A↔T, G↔C)</p>
+
+      <div className={`rounded-2xl p-4 mb-4 ${t.card}`}>
+        <div className="flex justify-between text-xs font-semibold mb-3">
+          <span className={t.textMuted}>Матрична нишка</span>
+          <span className={t.textMuted}>Комплементарна нишка</span>
+        </div>
+        <div className="space-y-2">
+          {DNA_TEMPLATE.map((base, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0 ${BASE_COLOR[base]}`}>{base}</div>
+              <div className="flex-1 flex items-center justify-center gap-1">
+                <div className="h-px flex-1 border-t-2 border-dashed border-gray-300/50" />
+                <span className="text-xs text-gray-400">···</span>
+                <div className="h-px flex-1 border-t-2 border-dashed border-gray-300/50" />
+              </div>
+              {answers[i] === null ? (
+                <div className="flex gap-1 flex-shrink-0">
+                  {(['A','T','G','C'] as Base[]).map(b => (
+                    <button key={b} onClick={() => pick(i, b)}
+                      className={`w-8 h-8 rounded-lg font-black text-xs transition-all hover:scale-110 active:scale-95 ${BASE_COLOR[b]}`}>{b}</button>
+                  ))}
+                </div>
+              ) : (
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0 border-2 ${
+                  answers[i] === COMPLEMENT[base] ? BASE_COLOR[answers[i]!] : 'bg-red-100 text-red-600 border-red-300'
+                } anim-pop`}>
+                  {answers[i] === COMPLEMENT[base] ? answers[i] : '✗'}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className={`rounded-2xl p-4 ${t.card} flex items-center justify-between`}>
+        <div>
+          <div className={`text-2xl font-black ${t.heading}`}>{correctCount}/16</div>
+          <div className={`text-xs ${t.textMuted}`}>правилни двойки · {score} т.</div>
+        </div>
+        {done && (
+          <div className="text-center anim-pop">
+            <div className="text-3xl">{correctCount === 16 ? '🏆' : correctCount >= 12 ? '🎉' : '💪'}</div>
+            <button onClick={reset} className={`mt-1 px-4 py-2 rounded-xl font-bold text-white text-sm ${t.primary}`}>Нова игра</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── EQUATION BALANCER ───────────────────────────────────────────────────────
+type EqSide = Record<string, number>;
+interface Equation {
+  label: string;
+  reactants: { formula: string; elements: EqSide }[];
+  products:  { formula: string; elements: EqSide }[];
+}
+
+const EQUATIONS: Equation[] = [
+  {
+    label: 'H₂ + O₂ → H₂O',
+    reactants: [{ formula:'H₂', elements:{H:2} }, { formula:'O₂', elements:{O:2} }],
+    products:  [{ formula:'H₂O', elements:{H:2,O:1} }],
+  },
+  {
+    label: 'N₂ + H₂ → NH₃',
+    reactants: [{ formula:'N₂', elements:{N:2} }, { formula:'H₂', elements:{H:2} }],
+    products:  [{ formula:'NH₃', elements:{N:1,H:3} }],
+  },
+  {
+    label: 'Fe + O₂ → Fe₂O₃',
+    reactants: [{ formula:'Fe', elements:{Fe:1} }, { formula:'O₂', elements:{O:2} }],
+    products:  [{ formula:'Fe₂O₃', elements:{Fe:2,O:3} }],
+  },
+  {
+    label: 'CH₄ + O₂ → CO₂ + H₂O',
+    reactants: [{ formula:'CH₄', elements:{C:1,H:4} }, { formula:'O₂', elements:{O:2} }],
+    products:  [{ formula:'CO₂', elements:{C:1,O:2} }, { formula:'H₂O', elements:{H:2,O:1} }],
+  },
+  {
+    label: 'Na + Cl₂ → NaCl',
+    reactants: [{ formula:'Na', elements:{Na:1} }, { formula:'Cl₂', elements:{Cl:2} }],
+    products:  [{ formula:'NaCl', elements:{Na:1,Cl:1} }],
+  },
+  {
+    label: 'CaCO₃ → CaO + CO₂',
+    reactants: [{ formula:'CaCO₃', elements:{Ca:1,C:1,O:3} }],
+    products:  [{ formula:'CaO', elements:{Ca:1,O:1} }, { formula:'CO₂', elements:{C:1,O:2} }],
+  },
+];
+
+const CORRECT_COEFFS: number[][] = [
+  [2,1,2],[1,3,2],[4,3,2],[1,2,1,2],[2,1,2],[1,1,1],
+];
+
+function countAtoms(side: { formula: string; elements: EqSide }[], coeffs: number[]): EqSide {
+  const result: EqSide = {};
+  side.forEach((s, i) => {
+    Object.entries(s.elements).forEach(([el, n]) => {
+      result[el] = (result[el] || 0) + n * coeffs[i];
+    });
+  });
+  return result;
+}
+
+function isBalanced(eq: Equation, rCoeffs: number[], pCoeffs: number[]): boolean {
+  const left = countAtoms(eq.reactants, rCoeffs);
+  const right = countAtoms(eq.products, pCoeffs);
+  const allEls = new Set([...Object.keys(left), ...Object.keys(right)]);
+  return [...allEls].every(el => (left[el] || 0) === (right[el] || 0));
+}
+
+function EquationBalancer({ onBack }: { onBack: () => void }) {
+  const { t } = useTheme();
+  const { updateXP } = useAuth();
+  const [eqIdx, setEqIdx] = useState(0);
+  const [solved, setSolved] = useState<boolean[]>(Array(6).fill(false));
+  const [score, setScore] = useState(0);
+  const [attempts, setAttempts] = useState(0);
+  const [confirmed, setConfirmed] = useState(false);
+
+  const eq = EQUATIONS[eqIdx];
+  const [rCoeffs, setRCoeffs] = useState<number[]>(eq.reactants.map(() => 1));
+  const [pCoeffs, setPCoeffs] = useState<number[]>(eq.products.map(() => 1));
+
+  const loadEq = (idx: number) => {
+    setEqIdx(idx);
+    setRCoeffs(EQUATIONS[idx].reactants.map(() => 1));
+    setPCoeffs(EQUATIONS[idx].products.map(() => 1));
+    setAttempts(0);
+    setConfirmed(false);
+  };
+
+  const adj = (side: 'r'|'p', i: number, delta: number) => {
+    if (confirmed) return;
+    if (side === 'r') setRCoeffs(c => { const n=[...c]; n[i]=Math.max(1,n[i]+delta); return n; });
+    else setPCoeffs(c => { const n=[...c]; n[i]=Math.max(1,n[i]+delta); return n; });
+  };
+
+  const confirm = () => {
+    setAttempts(a => a+1);
+    if (isBalanced(eq, rCoeffs, pCoeffs)) {
+      const pts = attempts === 0 ? 3 : attempts === 1 ? 2 : 1;
+      setScore(s => s + pts);
+      setConfirmed(true);
+      setSolved(sv => { const n=[...sv]; n[eqIdx]=true; return n; });
+      updateXP(pts * 5);
+    }
+  };
+
+  const left = countAtoms(eq.reactants, rCoeffs);
+  const right = countAtoms(eq.products, pCoeffs);
+  const allEls = [...new Set([...Object.keys(left), ...Object.keys(right)])];
+
+  const CoeffControl = ({ side, i, val }: { side:'r'|'p'; i:number; val:number }) => (
+    <div className="flex flex-col items-center gap-1">
+      <button onClick={() => adj(side,i,1)} className="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 text-xs font-bold">+</button>
+      <span className="text-xl font-black text-white w-8 text-center">{val > 1 ? val : ''}</span>
+      <button onClick={() => adj(side,i,-1)} className="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 text-xs font-bold">−</button>
+    </div>
+  );
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-6">
+      <GameStyles />
+      <button onClick={onBack} className={`mb-4 text-sm font-semibold ${t.primaryText} hover:opacity-70`}>← Обратно</button>
+      <h2 className={`text-2xl font-black mb-1 ${t.heading}`}>⚗️ Балансирай уравнението</h2>
+      <p className={`text-sm ${t.textMuted} mb-4`}>Нагласи коефициентите така, че броят атоми отляво = отдясно</p>
+
+      <div className="flex gap-2 mb-5 flex-wrap">
+        {EQUATIONS.map((_, i) => (
+          <button key={i} onClick={() => loadEq(i)}
+            className={`w-9 h-9 rounded-xl font-bold text-sm transition-all ${
+              i === eqIdx ? `${t.primary} text-white` : solved[i] ? 'bg-emerald-100 text-emerald-700' : `${t.card} ${t.text}`
+            }`}>
+            {solved[i] ? '✓' : i+1}
+          </button>
+        ))}
+        <span className={`ml-auto self-center font-black text-lg ${t.primaryText}`}>{score} т.</span>
+      </div>
+
+      <div className="rounded-3xl overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-700 p-5 mb-4">
+        <div className="flex items-center justify-center gap-3 flex-wrap">
+          {eq.reactants.map((r, i) => (
+            <div key={i} className="flex items-center gap-2">
+              {i > 0 && <span className="text-white/60 font-bold">+</span>}
+              <CoeffControl side="r" i={i} val={rCoeffs[i]} />
+              <span className="text-white font-black text-lg">{r.formula}</span>
+            </div>
+          ))}
+          <span className="text-white/60 font-bold text-xl">→</span>
+          {eq.products.map((p, i) => (
+            <div key={i} className="flex items-center gap-2">
+              {i > 0 && <span className="text-white/60 font-bold">+</span>}
+              <CoeffControl side="p" i={i} val={pCoeffs[i]} />
+              <span className="text-white font-black text-lg">{p.formula}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className={`rounded-2xl p-4 mb-4 ${t.card}`}>
+        <div className="text-xs font-semibold mb-2 grid grid-cols-3 text-center">
+          <span className={t.textMuted}>Елемент</span>
+          <span className="text-blue-500">Ляво</span>
+          <span className="text-purple-500">Дясно</span>
+        </div>
+        {allEls.map(el => {
+          const l = left[el]||0; const r = right[el]||0;
+          return (
+            <div key={el} className={`grid grid-cols-3 text-center py-1 rounded-lg text-sm font-bold ${l===r ? 'text-emerald-500' : 'text-red-500'}`}>
+              <span>{el}</span><span>{l}</span><span>{r}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {!confirmed ? (
+        <button onClick={confirm}
+          className={`w-full py-3 rounded-2xl font-bold text-white transition-all hover:scale-105 active:scale-95 ${t.primary}`}>
+          Потвърди
+        </button>
+      ) : (
+        <div className="text-center anim-pop">
+          <div className="text-4xl mb-2">🎉</div>
+          <p className={`font-bold mb-3 ${t.heading}`}>Балансирано! +{attempts === 0 ? 3 : attempts === 1 ? 2 : 1} т.</p>
+          {eqIdx < 5 && (
+            <button onClick={() => loadEq(eqIdx+1)}
+              className={`px-6 py-3 rounded-2xl font-bold text-white ${t.primary}`}>
+              Следващо →
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ORGANELLE MAP ────────────────────────────────────────────────────────────
+interface Organelle {
+  id: string;
+  name: string;
+  emoji: string;
+  fact: string;
+  cx: number; cy: number; rx: number; ry: number;
+  fill: string; stroke: string;
+}
+
+const ORGANELLES: Organelle[] = [
+  { id:'nucleus',      name:'Ядро',          emoji:'🔵', fact:'Съдържа ДНК и управлява клетъчната дейност',                cx:200,cy:130,rx:50,ry:40,  fill:'#93c5fd',stroke:'#3b82f6' },
+  { id:'mitochondria', name:'Митохондрия',   emoji:'🔴', fact:'Синтезира АТФ чрез клетъчното дишане',                     cx:310,cy:80, rx:38,ry:22,  fill:'#fca5a5',stroke:'#ef4444' },
+  { id:'golgi',        name:'Апарат на Голджи',emoji:'🟡',fact:'Модифицира и опакова протеини за секреция',               cx:100,cy:180,rx:45,ry:20,  fill:'#fde68a',stroke:'#f59e0b' },
+  { id:'lysosome',     name:'Лизозома',      emoji:'🟣', fact:'Съдържа хидролитични ензими за вътреклетъчно храносмилане',cx:310,cy:180,rx:22,ry:22,  fill:'#d8b4fe',stroke:'#8b5cf6' },
+  { id:'er',           name:'Ендоплазмен ретикулум',emoji:'🟢',fact:'Гранулиран ЕР синтезира протеини; гладък — липиди', cx:155,cy:210,rx:55,ry:18,  fill:'#bbf7d0',stroke:'#22c55e' },
+  { id:'ribosome',     name:'Рибозома',      emoji:'⚫', fact:'Синтезира протеини; 80S в еукариоти',                      cx:90, cy:120,rx:15,ry:15,  fill:'#6b7280',stroke:'#374151' },
+  { id:'vacuole',      name:'Вакуола',       emoji:'🔷', fact:'При растенията централната вакуола поддържа тургора',      cx:265,cy:215,rx:32,ry:28,  fill:'#bae6fd',stroke:'#0ea5e9' },
+  { id:'centrosome',   name:'Центрозома',    emoji:'🌟', fact:'Организира митотичното вретено при клетъчното делене',     cx:345,cy:215,rx:20,ry:20,  fill:'#fef08a',stroke:'#eab308' },
+];
+
+function OrganelleMap({ onBack }: { onBack: () => void }) {
+  const { t } = useTheme();
+  const { updateXP } = useAuth();
+  const [order] = useState(() => shuffle([...ORGANELLES]));
+  const [current, setCurrent] = useState(0);
+  const [found, setFound] = useState<Set<string>>(new Set());
+  const [wrong, setWrong] = useState<string | null>(null);
+  const [showFact, setShowFact] = useState<Organelle | null>(null);
+  const [score, setScore] = useState(0);
+  const [done, setDone] = useState(false);
+
+  const target = order[current];
+
+  const handleClick = (org: Organelle) => {
+    if (found.has(org.id) || done || showFact) return;
+    if (org.id === target.id) {
+      const newFound = new Set(found).add(org.id);
+      setFound(newFound);
+      setScore(s => s + 10);
+      setShowFact(org);
+      updateXP(10);
+    } else {
+      setWrong(org.id);
+      setTimeout(() => setWrong(null), 600);
+    }
+  };
+
+  const next = () => {
+    setShowFact(null);
+    if (current + 1 >= order.length) { setDone(true); }
+    else { setCurrent(c => c+1); }
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-6">
+      <GameStyles />
+      <button onClick={onBack} className={`mb-4 text-sm font-semibold ${t.primaryText} hover:opacity-70`}>← Обратно</button>
+      <h2 className={`text-2xl font-black mb-1 ${t.heading}`}>🔬 Клетъчна карта</h2>
+
+      {!done ? (
+        <>
+          <div className={`rounded-2xl p-4 mb-4 text-center ${t.card}`}>
+            <p className={`text-sm ${t.textMuted} mb-1`}>Намери:</p>
+            <p className={`text-xl font-black ${t.heading}`}>{target.emoji} {target.name}</p>
+            <p className={`text-xs ${t.textMuted} mt-1`}>{found.size}/{order.length} намерени · {score} т.</p>
+          </div>
+
+          <div className={`rounded-2xl overflow-hidden ${t.card} mb-4`}>
+            <svg viewBox="0 0 420 270" className="w-full" style={{ maxHeight: 260 }}>
+              <ellipse cx="210" cy="140" rx="195" ry="125" fill="none" stroke="#94a3b8" strokeWidth="2" strokeDasharray="6,4" />
+              {ORGANELLES.map(org => (
+                <g key={org.id} onClick={() => handleClick(org)} className="cursor-pointer">
+                  <ellipse
+                    cx={org.cx} cy={org.cy} rx={org.rx} ry={org.ry}
+                    fill={found.has(org.id) ? org.fill : wrong === org.id ? '#fca5a5' : org.fill + '66'}
+                    stroke={found.has(org.id) ? org.stroke : wrong === org.id ? '#ef4444' : org.stroke + '99'}
+                    strokeWidth={found.has(org.id) ? 2.5 : 1.5}
+                    className="transition-all duration-200"
+                    style={{ filter: found.has(org.id) ? 'drop-shadow(0 0 4px ' + org.stroke + '88)' : undefined }}
+                  />
+                  {found.has(org.id) && (
+                    <text x={org.cx} y={org.cy+4} textAnchor="middle" fontSize="10" fontWeight="bold" fill={org.stroke}>{org.emoji}</text>
+                  )}
+                </g>
+              ))}
+            </svg>
+          </div>
+
+          {showFact && (
+            <div className="rounded-2xl p-4 bg-emerald-50 border-2 border-emerald-200 anim-pop mb-4">
+              <div className="text-2xl mb-1">{showFact.emoji} ✅</div>
+              <p className="font-black text-emerald-800 mb-1">{showFact.name}</p>
+              <p className="text-sm text-emerald-700">{showFact.fact}</p>
+              <button onClick={next} className="mt-3 px-5 py-2 rounded-xl bg-emerald-500 text-white font-bold text-sm hover:bg-emerald-600 transition-all">
+                {current + 1 >= order.length ? '🏁 Финал' : 'Следващ →'}
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className={`rounded-2xl p-6 text-center ${t.card} anim-pop`}>
+          <div className="text-5xl mb-3">🏆</div>
+          <p className={`text-2xl font-black mb-2 ${t.heading}`}>{score} точки!</p>
+          <p className={`${t.textMuted} mb-4`}>Намери всички {order.length} органели!</p>
+          <button onClick={() => { setFound(new Set()); setCurrent(0); setScore(0); setDone(false); setShowFact(null); }}
+            className={`px-6 py-3 rounded-2xl font-bold text-white ${t.primary}`}>Нова игра</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── GAMES MENU ───────────────────────────────────────────────────────────────
 const gameList = [
   {
@@ -1152,6 +1563,30 @@ const gameList = [
     gradient: 'from-violet-500 to-indigo-600',
     shadow: 'shadow-violet-200/40',
   },
+  {
+    id: 'dna',
+    title: 'ДНК Строител',
+    desc: 'Избери комплементарните бази · A↔T · G↔C',
+    emoji: '🧬',
+    gradient: 'from-pink-500 to-rose-600',
+    shadow: 'shadow-pink-200/40',
+  },
+  {
+    id: 'balancer',
+    title: 'Балансирай уравнението',
+    desc: '6 химични уравнения · нагласи коефициентите',
+    emoji: '⚗️',
+    gradient: 'from-indigo-500 to-purple-600',
+    shadow: 'shadow-indigo-200/40',
+  },
+  {
+    id: 'organelle',
+    title: 'Клетъчна карта',
+    desc: 'Намери органелите в клетката · научи функциите им',
+    emoji: '🔬',
+    gradient: 'from-teal-400 to-emerald-500',
+    shadow: 'shadow-teal-200/40',
+  },
 ] as const;
 
 export default function GamesPage() {
@@ -1164,6 +1599,9 @@ export default function GamesPage() {
   if (game === 'flashcard') return <AppShell><FlashcardFlip onBack={() => setGame('menu')} /></AppShell>;
   if (game === 'memory') return <AppShell><MemoryMatch onBack={() => setGame('menu')} /></AppShell>;
   if (game === 'riddle') return <AppShell><RiddleGame onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'dna') return <AppShell><DNABuilder onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'balancer') return <AppShell><EquationBalancer onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'organelle') return <AppShell><OrganelleMap onBack={() => setGame('menu')} /></AppShell>;
 
   return (
     <AppShell>
@@ -1171,7 +1609,7 @@ export default function GamesPage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className={`text-3xl font-black ${t.heading}`}>Игри 🎮</h1>
-          <p className={`mt-1 ${t.textMuted}`}>6 начина да учиш докато се забавляваш</p>
+          <p className={`mt-1 ${t.textMuted}`}>9 начина да учиш докато се забавляваш</p>
         </div>
 
         <div className="space-y-4">

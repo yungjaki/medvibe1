@@ -28,68 +28,78 @@ export default function ProfilePage() {
   return (
     <AppShell>
       <div className="max-w-2xl mx-auto px-4 py-8">
-        <h1 className={`text-3xl font-black mb-8 ${t.heading}`}>Профил 👤</h1>
-
-        {/* User card */}
-        <div className={`rounded-3xl p-6 mb-6 ${t.card}`}>
-          <div className="flex items-center gap-4 mb-4">
-            <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${t.xpBar} flex items-center justify-center text-2xl font-black text-white`}>
-              {profile?.displayName?.[0]?.toUpperCase() || '?'}
+        {/* Hero card */}
+        <div className={`relative rounded-3xl overflow-hidden mb-6 animate-slide-up ${
+          mode === 'soft'
+            ? 'bg-gradient-to-br from-pink-400 via-purple-500 to-blue-500'
+            : 'bg-gradient-to-br from-cyan-600 via-blue-700 to-indigo-800'
+        }`}>
+          <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full opacity-20 blur-2xl bg-white" />
+          <div className="relative z-10 p-6">
+            <div className="flex items-center gap-4 mb-5">
+              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-2xl font-black text-white shadow-xl">
+                {profile?.displayName?.[0]?.toUpperCase() || '?'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-black text-white truncate">{profile?.displayName}</h2>
+                <p className="text-white/60 text-sm truncate">{profile?.email}</p>
+              </div>
+              <div className="text-center flex-shrink-0">
+                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 flex flex-col items-center justify-center shadow-lg">
+                  <span className="text-lg font-black text-white">{profile?.level || 1}</span>
+                  <span className="text-white/60 text-[9px] font-semibold uppercase">Ниво</span>
+                </div>
+              </div>
             </div>
             <div>
-              <h2 className={`text-xl font-black ${t.heading}`}>{profile?.displayName}</h2>
-              <p className={`text-sm ${t.textMuted}`}>{profile?.email}</p>
-              {profile?.isPremium && (
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${mode === 'soft' ? 'bg-purple-100 text-purple-600' : 'bg-cyan-900/50 text-cyan-400'}`}>
-                  ⭐ Premium
-                </span>
-              )}
+              <div className="flex justify-between mb-1.5 text-xs text-white/70">
+                <span>⚡ {profile?.xp || 0} XP</span>
+                <span>{xpInLevel}/100 до Ниво {(profile?.level || 1) + 1}</span>
+              </div>
+              <div className="h-2 rounded-full bg-white/20 overflow-hidden">
+                <div className="h-2 rounded-full bg-white/80 transition-all duration-700 progress-shine" style={{ width: `${xpInLevel}%` }} />
+              </div>
             </div>
-          </div>
-
-          {/* XP */}
-          <div className={`rounded-2xl p-4 ${mode === 'soft' ? 'bg-pink-50' : 'bg-gray-800'}`}>
-            <div className="flex justify-between mb-2">
-              <span className={`text-sm font-bold ${t.heading}`}>Ниво {profile?.level || 1}</span>
-              <span className={`text-sm ${t.primaryText} font-bold`}>⚡ {profile?.xp || 0} XP</span>
-            </div>
-            <div className={`h-3 rounded-full ${t.progressBg}`}>
-              <div className={`h-3 rounded-full bg-gradient-to-r ${t.xpBar} transition-all`} style={{ width: `${xpInLevel}%` }} />
-            </div>
-            <p className={`text-xs mt-1 ${t.textMuted}`}>{xpInLevel}/100 XP до Ниво {(profile?.level || 1) + 1}</p>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-2 mb-6">
+        <div className="grid grid-cols-3 gap-2 mb-6 stagger-children">
           {[
-            { label: 'Серия', value: profile?.streak || 0, suffix: '🔥' },
-            { label: 'Отговор.', value: totalCompleted, suffix: '✅' },
-            { label: 'Напредък', value: `${Math.round((totalCompleted / totalQ) * 100)}%`, suffix: '📈' },
+            { label: 'Серия', value: `${profile?.streak || 0}д`, icon: '🔥', gradient: 'from-orange-400 to-red-500' },
+            { label: 'Отговорени', value: totalCompleted, icon: '✅', gradient: 'from-emerald-400 to-teal-500' },
+            { label: 'Напредък', value: `${Math.round((totalCompleted / Math.max(totalQ,1)) * 100)}%`, icon: '📈', gradient: 'from-violet-400 to-purple-500' },
           ].map(s => (
             <div key={s.label} className={`rounded-2xl p-3 text-center ${t.card}`}>
-              <div className={`text-xl font-black ${t.heading}`}>{s.value}</div>
-              <div className={`text-[11px] ${t.textMuted} mt-0.5`}>{s.suffix} {s.label}</div>
+              <div className={`text-xl font-black bg-gradient-to-r ${s.gradient} bg-clip-text text-transparent leading-tight`}>{s.value}</div>
+              <div className={`text-[10px] mt-0.5 ${t.textMuted} leading-tight`}>{s.icon} {s.label}</div>
             </div>
           ))}
         </div>
 
         {/* Subject progress */}
         <div className={`rounded-3xl p-5 mb-6 ${t.card}`}>
-          <h3 className={`font-bold mb-4 ${t.heading}`}>Напредък по предмети</h3>
-          <div className="space-y-3">
+          <h3 className={`font-bold mb-4 ${t.heading}`}>📊 Напредък по предмети</h3>
+          <div className="space-y-4">
             {subjects.map(s => {
               const qs = questions.filter(q => q.subject === s.id);
               const done = profile?.completedQuizzes?.filter(id => qs.find(q => q.id === id)).length || 0;
               const pct = qs.length > 0 ? Math.round((done / qs.length) * 100) : 0;
               return (
                 <div key={s.id}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className={t.text}>{s.emoji} {s.name}</span>
-                    <span className={t.primaryText}>{done}/{qs.length}</span>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${s.color} flex items-center justify-center text-base flex-shrink-0`}>
+                      {s.emoji}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm font-semibold ${t.heading} truncate`}>{s.name}</span>
+                        <span className={`text-xs font-bold ${t.primaryText} ml-2 flex-shrink-0`}>{done}/{qs.length}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className={`h-2 rounded-full ${t.progressBg}`}>
-                    <div className={`h-2 rounded-full bg-gradient-to-r ${s.color}`} style={{ width: `${pct}%` }} />
+                  <div className={`h-2 rounded-full ${t.progressBg} overflow-hidden`}>
+                    <div className={`h-2 rounded-full bg-gradient-to-r ${s.color} transition-all duration-700`} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );

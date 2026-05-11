@@ -170,9 +170,18 @@ function QuizContent() {
     return (
       <AppShell>
         <div className="max-w-2xl mx-auto px-4 py-8">
-          <div className="mb-8">
-            <h1 className={`text-3xl font-black ${t.heading}`}>🧪 Настрой теста</h1>
-            <p className={`mt-1 ${t.textMuted}`}>Избери предмет и брой въпроси</p>
+          {/* Hero */}
+          <div className={`relative rounded-3xl overflow-hidden mb-8 animate-slide-up ${
+            mode === 'soft'
+              ? 'bg-gradient-to-br from-pink-400 via-purple-500 to-blue-500'
+              : 'bg-gradient-to-br from-cyan-600 via-blue-700 to-indigo-800'
+          }`}>
+            <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full opacity-20 blur-2xl bg-white" />
+            <div className="relative z-10 p-6">
+              <div className="text-4xl mb-3">🧪</div>
+              <h1 className="text-2xl font-black text-white">Настрой теста</h1>
+              <p className="text-white/70 text-sm mt-1">{availableCount} въпроса · избери предмет и настройки</p>
+            </div>
           </div>
 
           <div className={`rounded-3xl p-6 mb-6 ${t.card}`}>
