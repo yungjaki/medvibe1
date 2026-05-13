@@ -11,7 +11,7 @@ const mobileNav = [
   { href: '/dashboard', icon: '🏠', label: 'Начало' },
   { href: '/study',     icon: '📖', label: 'Конспект' },
   { href: '/quiz',      icon: '🧪', label: 'Тест' },
-  { href: '/games',     icon: '🎮', label: 'Игри' },
+  { href: '/anatomy',   icon: '🦴', label: '3D Атлас' },
   { href: '/profile',   icon: '👤', label: 'Профил' },
 ];
 
@@ -20,6 +20,7 @@ const sidebarNav = [
   { href: '/study',     icon: '📖', label: 'Конспект' },
   { href: '/quiz',      icon: '🧪', label: 'Тест' },
   { href: '/games',     icon: '🎮', label: 'Игри' },
+  { href: '/anatomy',   icon: '🦴', label: '3D Атлас' },
   { href: '/subjects',  icon: '📚', label: 'Предмети' },
   { href: '/profile',   icon: '👤', label: 'Профил' },
 ];

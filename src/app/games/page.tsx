@@ -1,12 +1,25 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import AppShell from '@/components/AppShell';
+
+const Operation3D = dynamic(() => import('@/components/Operation3D'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-black">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-10 h-10 rounded-full border-4 border-white/20 border-t-white/60 animate-spin" />
+        <span className="text-white/40 text-sm">Зареждане…</span>
+      </div>
+    </div>
+  ),
+});
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { questions, tfStatements, flashCards, riddles, Riddle } from '@/lib/data/questions';
 
-type GameType = 'menu' | 'speed' | 'matching' | 'truefalse' | 'flashcard' | 'memory' | 'riddle' | 'dna' | 'balancer' | 'organelle';
+type GameType = 'menu' | 'speed' | 'matching' | 'truefalse' | 'flashcard' | 'memory' | 'riddle' | 'dna' | 'balancer' | 'organelle' | 'drugs' | 'immune' | 'operation';
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -1513,126 +1526,805 @@ function OrganelleMap({ onBack }: { onBack: () => void }) {
   );
 }
 
-// ─── GAMES MENU ───────────────────────────────────────────────────────────────
-const gameList = [
+// ─── DRUGS & RECEPTORS ───────────────────────────────────────────────────────
+const DRUG_PAIRS = [
+  { drug: 'Аспирин',       mechanism: 'COX инхибитор',       emoji: '💊', desc: 'НПВС — необратимо инхибира COX-1/COX-2, намалява простагландините' },
+  { drug: 'Метформин',     mechanism: 'AMPK активатор',      emoji: '💉', desc: 'Антидиабетик — намалява чернодробната глюконеогенеза' },
+  { drug: 'Адреналин',     mechanism: 'β₁/α рецептор',       emoji: '⚡', desc: 'Катехоламин — увеличава СЧ и АН, избор при анафилаксия' },
+  { drug: 'Атропин',       mechanism: 'М-холинорецептор',    emoji: '👁', desc: 'Антагонист — блокира парасимпатиковите ефекти (мидриаза, тахикардия)' },
+  { drug: 'Морфин',        mechanism: 'μ-опиоиден рецептор', emoji: '😴', desc: 'Опиоид — мощен аналгетик с риск от зависимост и депресия на ДЦ' },
+  { drug: 'Амоксицилин',   mechanism: 'PBP протеини',        emoji: '🔬', desc: 'β-лактамен антибиотик — инхибира синтеза на пептидогликан' },
+  { drug: 'Аторвастатин',  mechanism: 'HMG-CoA редуктаза',   emoji: '❤️', desc: 'Статин — намалява синтеза на холестерол в черния дроб' },
+  { drug: 'Метотрексат',   mechanism: 'DHFR инхибитор',      emoji: '🧬', desc: 'Антиметаболит — блокира синтеза на тетрахидрофолат' },
+  { drug: 'Лозартан',      mechanism: 'AT₁ рецептор',        emoji: '🫀', desc: 'АРБ — блокира ангиотензин II рецепторите, антихипертензивен' },
+  { drug: 'Омепразол',     mechanism: 'H⁺/K⁺ АТФаза',        emoji: '🍽', desc: 'PPI — необратимо инхибира стомашната протонна помпа' },
+];
+
+function DrugReceptorGame({ onBack }: { onBack: () => void }) {
+  const { t } = useTheme();
+  const { updateXP } = useAuth();
+  const [phase, setPhase] = useState<'idle' | 'playing' | 'done'>('idle');
+  const [pairs, setPairs] = useState<typeof DRUG_PAIRS>([]);
+  const [drugs, setDrugs] = useState<string[]>([]);
+  const [mechs, setMechs] = useState<string[]>([]);
+  const [selectedDrug, setSelectedDrug] = useState<string | null>(null);
+  const [matched, setMatched] = useState<string[]>([]);
+  const [wrong, setWrong] = useState<string | null>(null);
+  const [moves, setMoves] = useState(0);
+  const [score, setScore] = useState(0);
+  const [confetti, setConfetti] = useState(false);
+  const [lastDesc, setLastDesc] = useState<string | null>(null);
+
+  const start = () => {
+    const sel = shuffle(DRUG_PAIRS).slice(0, 6);
+    setPairs(sel);
+    setDrugs(shuffle(sel.map(p => p.drug)));
+    setMechs(shuffle(sel.map(p => p.mechanism)));
+    setMatched([]); setSelectedDrug(null); setWrong(null);
+    setMoves(0); setScore(0); setConfetti(false); setLastDesc(null);
+    setPhase('playing');
+  };
+
+  const handleMech = (mech: string) => {
+    if (!selectedDrug || matched.includes(selectedDrug)) return;
+    setMoves(m => m + 1);
+    const pair = pairs.find(p => p.drug === selectedDrug);
+    if (pair?.mechanism === mech) {
+      const nm = [...matched, selectedDrug];
+      setMatched(nm);
+      setScore(s => s + Math.max(1, 4 - Math.floor(moves / 2)));
+      setLastDesc(pair.desc);
+      setSelectedDrug(null);
+      if (nm.length === pairs.length) { setPhase('done'); setConfetti(true); updateXP(score * 5 + 30); }
+    } else {
+      setWrong(mech);
+      setTimeout(() => { setWrong(null); setSelectedDrug(null); }, 700);
+    }
+  };
+
+  if (phase !== 'playing') return (
+    <div className="max-w-lg mx-auto px-4 py-8">
+      {confetti && <Confetti />}
+      <GameStyles />
+      <button onClick={onBack} className={`text-sm mb-6 ${t.textMuted}`}>← Обратно</button>
+      <div className={`rounded-3xl p-8 text-center ${t.card} anim-slide-up`}>
+        <div className="text-6xl mb-4">💊</div>
+        <h2 className={`text-3xl font-black mb-2 ${t.heading}`}>Лекарства & Рецептори</h2>
+        <p className={`${t.textMuted} mb-6`}>Свържи всяко лекарство с неговия механизъм на действие. 6 двойки.</p>
+        {phase === 'done' && (
+          <div className="mb-6 space-y-1">
+            <div className="text-3xl font-black text-green-500 anim-pop">🎉 Завърши!</div>
+            <div className={`text-sm ${t.textMuted}`}>{moves} хода</div>
+          </div>
+        )}
+        <button onClick={start} className={`w-full py-4 rounded-2xl font-bold text-white text-lg hover:scale-105 ${t.primary}`}>
+          {phase === 'done' ? '🔄 Нова игра' : '💊 Стартирай'}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-4">
+      <GameStyles />
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={onBack} className={`text-sm ${t.textMuted}`}>← Обратно</button>
+        <span className={`text-xs font-bold ${t.textMuted}`}>{matched.length}/{pairs.length} · {moves} хода</span>
+      </div>
+
+      {lastDesc && (
+        <div className="mb-3 px-4 py-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-800 anim-slide-up font-medium">
+          ✅ {lastDesc}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <div className={`text-xs font-bold uppercase tracking-wider mb-2 ${t.textMuted}`}>Лекарство</div>
+          {drugs.map(drug => {
+            const pair = pairs.find(p => p.drug === drug);
+            const isMatched = matched.includes(drug);
+            const isSelected = selectedDrug === drug;
+            return (
+              <button key={drug} onClick={() => !isMatched && setSelectedDrug(drug)} disabled={isMatched}
+                className={`w-full p-3 rounded-xl text-sm font-semibold text-left transition-all border-2 anim-slide-up flex items-center gap-2 ${
+                  isMatched ? `${t.correct} opacity-60` :
+                  isSelected ? `${t.primary} text-white border-transparent scale-105` :
+                  `${t.card} ${t.text} border-transparent ${t.cardHover}`
+                }`}>
+                <span>{pair?.emoji}</span>
+                <span>{drug}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="space-y-2">
+          <div className={`text-xs font-bold uppercase tracking-wider mb-2 ${t.textMuted}`}>Механизъм</div>
+          {mechs.map(mech => {
+            const matchedDrug = pairs.find(p => p.mechanism === mech)?.drug;
+            const isMatched = matchedDrug ? matched.includes(matchedDrug) : false;
+            const isWrong = wrong === mech;
+            return (
+              <button key={mech} onClick={() => handleMech(mech)} disabled={isMatched || !selectedDrug}
+                className={`w-full p-3 rounded-xl text-sm font-semibold text-left transition-all border-2 anim-slide-up ${
+                  isMatched ? `${t.correct} opacity-60` :
+                  isWrong ? `${t.wrong} anim-shake` :
+                  selectedDrug ? `${t.card} ${t.text} border-transparent hover:scale-[1.02] ${t.cardHover}` :
+                  `${t.card} ${t.text} border-transparent opacity-50`
+                }`}>
+                {mech}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── IMMUNE DEFENSE ───────────────────────────────────────────────────────────
+interface Enemy {
+  id: number; x: number; hp: number; maxHp: number;
+  type: 'bacteria' | 'virus' | 'fungus';
+  speed: number;
+}
+interface Defender {
+  slot: number; type: 'neutrophil' | 'macrophage' | 'tcell';
+  lastAttack: number;
+}
+
+const DEF_TYPES = {
+  neutrophil: { emoji: '🔵', name: 'Неутрофил',  range: 80,  dmg: 12, rate: 900,  cost: 40,  color: '#3b82f6' },
+  macrophage: { emoji: '🟠', name: 'Макрофаг',   range: 110, dmg: 35, rate: 2200, cost: 100, color: '#f97316' },
+  tcell:      { emoji: '🟢', name: 'T-клетка',   range: 130, dmg: 22, rate: 1600, cost: 70,  color: '#22c55e' },
+} as const;
+type DefType = keyof typeof DEF_TYPES;
+
+const ENEMY_TYPES_DEF = {
+  bacteria: { emoji: '🦠', name: 'Бактерия', hp: 50,  speed: 38, reward: 10, color: '#ef4444' },
+  virus:    { emoji: '🔴', name: 'Вирус',    hp: 90,  speed: 55, reward: 15, color: '#8b5cf6' },
+  fungus:   { emoji: '⚫', name: 'Гъбичка',  hp: 140, speed: 22, reward: 20, color: '#78716c' },
+};
+
+const WAVES_DEF = [
+  ['bacteria','bacteria','bacteria','bacteria','bacteria'],
+  ['bacteria','bacteria','virus','bacteria','virus','bacteria'],
+  ['virus','bacteria','fungus','virus','bacteria','fungus','virus'],
+] as const;
+
+// Slot x positions (10 slots along top row + 10 bottom row)
+const SLOT_XS = [50, 100, 155, 210, 265, 320, 375];
+const PATH_Y  = 135;
+const CANVAS_W = 420, CANVAS_H = 270;
+
+function ImmuneDefense({ onBack }: { onBack: () => void }) {
+  const { t } = useTheme();
+  const { updateXP } = useAuth();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stateRef = useRef({
+    enemies: [] as Enemy[],
+    defenders: [] as Defender[],
+    gold: 120, lives: 10, score: 0,
+    wave: 0, spawned: 0, spawnTimer: 0,
+    phase: 'setup' as 'setup' | 'fighting' | 'won' | 'lost',
+    time: 0,
+  });
+  const rafRef = useRef<number>(0);
+  const lastRef = useRef<number>(0);
+  const eidRef = useRef(0);
+  const [ui, setUi] = useState({ gold: 120, lives: 10, score: 0, wave: 0, phase: 'setup' as string });
+  const [selDef, setSelDef] = useState<DefType>('neutrophil');
+  const [slotMap, setSlotMap] = useState<Record<number, DefType>>({});
+
+  const syncUi = () => {
+    const s = stateRef.current;
+    setUi({ gold: s.gold, lives: s.lives, score: s.score, wave: s.wave, phase: s.phase });
+  };
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d')!;
+    const s = stateRef.current;
+    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // Background
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // Path
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 28;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, PATH_Y);
+    ctx.lineTo(CANVAS_W, PATH_Y);
+    ctx.stroke();
+
+    // Slot indicators
+    for (let row = 0; row < 2; row++) {
+      const sy = row === 0 ? 55 : 215;
+      SLOT_XS.forEach((sx, i) => {
+        const slotId = row * 10 + i;
+        const def = s.defenders.find(d => d.slot === slotId);
+        ctx.beginPath();
+        ctx.arc(sx, sy, 18, 0, Math.PI * 2);
+        ctx.fillStyle = def ? DEF_TYPES[def.type].color + '33' : '#1e293b';
+        ctx.fill();
+        ctx.strokeStyle = def ? DEF_TYPES[def.type].color : '#334155';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        if (def) {
+          ctx.font = '16px serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(DEF_TYPES[def.type].emoji, sx, sy);
+        }
+      });
+    }
+
+    // Enemies
+    s.enemies.forEach(e => {
+      const et = ENEMY_TYPES_DEF[e.type];
+      ctx.font = '20px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(et.emoji, e.x, PATH_Y);
+      // HP bar
+      const bw = 28, bh = 4;
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(e.x - bw/2, PATH_Y - 20, bw, bh);
+      ctx.fillStyle = e.hp > e.maxHp * 0.5 ? '#22c55e' : e.hp > e.maxHp * 0.25 ? '#f59e0b' : '#ef4444';
+      ctx.fillRect(e.x - bw/2, PATH_Y - 20, bw * (e.hp / e.maxHp), bh);
+    });
+
+    // Attack beams
+    s.defenders.forEach(def => {
+      const dt = DEF_TYPES[def.type];
+      const row = def.slot < 10 ? 0 : 1;
+      const idx = def.slot % 10;
+      const sx = SLOT_XS[idx], sy = row === 0 ? 55 : 215;
+      const target = s.enemies.find(e => Math.abs(e.x - sx) < dt.range);
+      if (target && (Date.now() - def.lastAttack) < 200) {
+        ctx.strokeStyle = dt.color + '88';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(target.x, PATH_Y);
+        ctx.stroke();
+      }
+    });
+  }, []);
+
+  const gameLoop = useCallback((ts: number) => {
+    const dt = Math.min((ts - lastRef.current) / 1000, 0.1);
+    lastRef.current = ts;
+    const s = stateRef.current;
+    if (s.phase !== 'fighting') return;
+
+    // Spawn enemies
+    s.spawnTimer += dt;
+    const wave = WAVES_DEF[s.wave] as readonly string[];
+    const interval = 1.8 - s.wave * 0.3;
+    if (s.spawned < wave.length && s.spawnTimer >= interval) {
+      s.spawnTimer = 0;
+      const type = wave[s.spawned] as keyof typeof ENEMY_TYPES_DEF;
+      const et = ENEMY_TYPES_DEF[type];
+      s.enemies.push({ id: eidRef.current++, x: -20, hp: et.hp, maxHp: et.hp, type, speed: et.speed });
+      s.spawned++;
+    }
+
+    // Move enemies
+    for (let i = s.enemies.length - 1; i >= 0; i--) {
+      const e = s.enemies[i];
+      e.x += e.speed * dt;
+      if (e.x > CANVAS_W + 20) {
+        s.enemies.splice(i, 1);
+        s.lives--;
+        if (s.lives <= 0) { s.phase = 'lost'; syncUi(); draw(); return; }
+      }
+    }
+
+    // Attack
+    const now = Date.now();
+    s.defenders.forEach(def => {
+      const dt2 = DEF_TYPES[def.type];
+      if (now - def.lastAttack < dt2.rate) return;
+      const row = def.slot < 10 ? 0 : 1;
+      const idx = def.slot % 10;
+      const sx = SLOT_XS[idx];
+      const target = s.enemies.find(e => Math.abs(e.x - sx) < dt2.range);
+      if (target) {
+        target.hp -= dt2.dmg;
+        def.lastAttack = now;
+        if (target.hp <= 0) {
+          s.gold += ENEMY_TYPES_DEF[target.type].reward;
+          s.score += ENEMY_TYPES_DEF[target.type].reward;
+          s.enemies.splice(s.enemies.indexOf(target), 1);
+        }
+      }
+    });
+
+    // Wave done?
+    if (s.spawned >= wave.length && s.enemies.length === 0) {
+      if (s.wave < WAVES_DEF.length - 1) {
+        s.wave++;
+        s.spawned = 0;
+        s.spawnTimer = 0;
+        s.phase = 'setup';
+      } else {
+        s.phase = 'won';
+        updateXP(s.score + 50);
+      }
+      syncUi(); draw(); return;
+    }
+
+    draw();
+    syncUi();
+    rafRef.current = requestAnimationFrame(gameLoop);
+  }, [draw, updateXP]);
+
+  const startWave = () => {
+    stateRef.current.phase = 'fighting';
+    lastRef.current = performance.now();
+    syncUi();
+    rafRef.current = requestAnimationFrame(gameLoop);
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+    const scale = CANVAS_W / rect.width;
+    const cx = (e.clientX - rect.left) * scale;
+    const cy = (e.clientY - rect.top) * scale;
+
+    for (let row = 0; row < 2; row++) {
+      const sy = row === 0 ? 55 : 215;
+      SLOT_XS.forEach((sx, i) => {
+        if (Math.hypot(cx - sx, cy - sy) < 22) {
+          const slotId = row * 10 + i;
+          const s = stateRef.current;
+          if (s.defenders.find(d => d.slot === slotId)) return;
+          const cost = DEF_TYPES[selDef].cost;
+          if (s.gold >= cost) {
+            s.gold -= cost;
+            s.defenders.push({ slot: slotId, type: selDef, lastAttack: 0 });
+            setSlotMap(m => ({ ...m, [slotId]: selDef }));
+            syncUi();
+            draw();
+          }
+        }
+      });
+    }
+  };
+
+  useEffect(() => {
+    draw();
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [draw]);
+
+  const waveNames = ['Вълна 1 — Бактерии', 'Вълна 2 — Бактерии + Вируси', 'Вълна 3 — Всички видове'];
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-4">
+      <GameStyles />
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={onBack} className={`text-sm ${t.textMuted}`}>← Обратно</button>
+        <span className={`text-sm font-black ${t.heading}`}>🦠 Имунна отбрана</span>
+        <div className="flex gap-3 text-sm font-bold">
+          <span className="text-amber-500">💰{ui.gold}</span>
+          <span className="text-red-500">❤️{ui.lives}</span>
+          <span className={t.primaryText}>⚡{ui.score}</span>
+        </div>
+      </div>
+
+      {/* Canvas */}
+      <div className="rounded-2xl overflow-hidden mb-3 touch-none">
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_W}
+          height={CANVAS_H}
+          className="w-full cursor-pointer"
+          onClick={handleCanvasClick}
+        />
+      </div>
+
+      {ui.phase === 'won' && (
+        <div className={`rounded-2xl p-5 text-center ${t.card} anim-pop mb-3`}>
+          <div className="text-4xl mb-2">🏆</div>
+          <div className={`font-black text-xl ${t.heading}`}>Спечели! {ui.score} точки</div>
+          <button onClick={onBack} className={`mt-3 px-6 py-2 rounded-xl font-bold text-white ${t.primary}`}>← Меню</button>
+        </div>
+      )}
+
+      {ui.phase === 'lost' && (
+        <div className={`rounded-2xl p-5 text-center ${t.card} anim-pop mb-3`}>
+          <div className="text-4xl mb-2">💔</div>
+          <div className={`font-black text-xl ${t.heading}`}>Инфекцията се разпространи!</div>
+          <button onClick={onBack} className={`mt-3 px-6 py-2 rounded-xl font-bold text-white ${t.primary}`}>← Меню</button>
+        </div>
+      )}
+
+      {(ui.phase === 'setup') && (
+        <div className={`rounded-2xl px-4 py-3 mb-3 ${t.card} text-center`}>
+          <div className={`text-sm font-bold ${t.heading} mb-2`}>{waveNames[ui.wave]}</div>
+          <button onClick={startWave}
+            className="px-6 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-red-500 to-rose-600 hover:scale-105 transition-all shadow-lg">
+            ▶ Старт на вълната
+          </button>
+        </div>
+      )}
+
+      {/* Defender selector */}
+      <div className="flex gap-2 flex-wrap">
+        {(Object.keys(DEF_TYPES) as DefType[]).map(type => {
+          const d = DEF_TYPES[type];
+          return (
+            <button key={type} onClick={() => setSelDef(type)}
+              className={`flex-1 p-2.5 rounded-xl text-xs font-bold transition-all border-2 min-w-0 ${
+                selDef === type ? 'border-transparent text-white shadow-lg' : `${t.card} ${t.text} border-transparent ${t.cardHover}`
+              }`}
+              style={selDef === type ? { background: d.color } : {}}>
+              <div className="text-lg mb-0.5">{d.emoji}</div>
+              <div className="truncate">{d.name}</div>
+              <div className={`${selDef === type ? 'opacity-80' : t.textMuted} font-normal`}>💰{d.cost}</div>
+            </button>
+          );
+        })}
+      </div>
+      <p className={`text-xs text-center mt-2 ${t.textMuted}`}>Кликни върху слот (кръгче) за да поставиш клетка</p>
+    </div>
+  );
+}
+
+// ─── OPERATION GAME 3D ───────────────────────────────────────────────────────
+const OP_CASES = [
   {
-    id: 'speed',
-    title: 'Бърз кръг',
-    desc: '60 сек · максимум въпроси · серии за бонус',
-    emoji: '⚡',
-    gradient: 'from-yellow-400 to-orange-500',
-    shadow: 'shadow-orange-200/40',
+    id: 'appendix' as const, name: 'Апендектомия', emoji: '🩹',
+    gradient: 'from-emerald-500 to-teal-700',
+    bg: '#021a12',
+    symptoms: ['🌡 Температура 38.8°C', '📍 Болка в дясна долна квадрант', '✅ Симптом на Блумберг (+)'],
+    organs: [{ name: 'Апендикс', emoji: '🩹', ok: true }, { name: 'Далак', emoji: '🫀', ok: false }, { name: 'Черен дроб', emoji: '🟤', ok: false }, { name: 'Жлъчен мехур', emoji: '🟡', ok: false }],
+    fact: 'Апендицитът е най-честата хирургична спешност — засяга 7% от хората.',
+    xp: 80,
   },
   {
-    id: 'truefalse',
-    title: 'Вярно / Грешно',
-    desc: '45 сек · бърза преценка на твърдения',
-    emoji: '⚡🧠',
-    gradient: 'from-green-400 to-teal-500',
-    shadow: 'shadow-green-200/40',
+    id: 'heart' as const, name: 'Байпас операция', emoji: '🫀',
+    gradient: 'from-red-500 to-rose-800',
+    bg: '#2a0808',
+    symptoms: ['💔 ЕКГ: ST-елевация в II, III, aVF', '🩸 Тропонин: 4.2 ng/mL ↑↑', '😰 Болка с иррадиация в лявата ръка'],
+    organs: [{ name: 'Сърце', emoji: '🫀', ok: true }, { name: 'Бял дроб', emoji: '🫁', ok: false }, { name: 'Аорта', emoji: '🔴', ok: false }, { name: 'Перикард', emoji: '🟠', ok: false }],
+    fact: 'ИМА настъпва при оклузия на коронарна артерия — всяка минута унищожава 2 млн. кардиомиоцита.',
+    xp: 100,
   },
   {
-    id: 'flashcard',
-    title: 'Флашкарти',
-    desc: 'Обърни картата · Знам / Уча',
-    emoji: '🃏',
-    gradient: 'from-purple-400 to-pink-500',
-    shadow: 'shadow-purple-200/40',
-  },
-  {
-    id: 'memory',
-    title: 'Памет',
-    desc: 'Намери всички двойки термин–определение',
-    emoji: '🧠',
-    gradient: 'from-blue-400 to-cyan-500',
-    shadow: 'shadow-blue-200/40',
-  },
-  {
-    id: 'matching',
-    title: 'Свържи термините',
-    desc: 'Свържи всеки термин с правилното определение',
-    emoji: '🧩',
-    gradient: 'from-rose-400 to-pink-500',
-    shadow: 'shadow-rose-200/40',
-  },
-  {
-    id: 'riddle',
-    title: 'Кой съм аз?',
-    desc: '5 рунда · улики → познай термина · отговори рано за повече точки',
-    emoji: '🔍',
-    gradient: 'from-violet-500 to-indigo-600',
-    shadow: 'shadow-violet-200/40',
-  },
-  {
-    id: 'dna',
-    title: 'ДНК Строител',
-    desc: 'Избери комплементарните бази · A↔T · G↔C',
-    emoji: '🧬',
-    gradient: 'from-pink-500 to-rose-600',
-    shadow: 'shadow-pink-200/40',
-  },
-  {
-    id: 'balancer',
-    title: 'Балансирай уравнението',
-    desc: '6 химични уравнения · нагласи коефициентите',
-    emoji: '⚗️',
-    gradient: 'from-indigo-500 to-purple-600',
-    shadow: 'shadow-indigo-200/40',
-  },
-  {
-    id: 'organelle',
-    title: 'Клетъчна карта',
-    desc: 'Намери органелите в клетката · научи функциите им',
-    emoji: '🔬',
-    gradient: 'from-teal-400 to-emerald-500',
-    shadow: 'shadow-teal-200/40',
+    id: 'kidney' as const, name: 'Нефректомия', emoji: '🫘',
+    gradient: 'from-violet-500 to-purple-900',
+    bg: '#160828',
+    symptoms: ['🔴 Хематурия (кръв в урината)', '📡 Ехография: маса 4.5 cm', '⚖️ Загуба на тегло 6 kg / 3 месеца'],
+    organs: [{ name: 'Бъбрек', emoji: '🫘', ok: true }, { name: 'Надбъбрек', emoji: '🟣', ok: false }, { name: 'Пикочен мехур', emoji: '🔵', ok: false }, { name: 'Далак', emoji: '🟤', ok: false }],
+    fact: 'Бъбречноклетъчният карцином (RCC) е 90% от бъбречните тумори при възрастни.',
+    xp: 90,
   },
 ] as const;
 
-export default function GamesPage() {
-  const { t } = useTheme();
-  const [game, setGame] = useState<GameType>('menu');
+type OpCase  = typeof OP_CASES[number];
+type OpPhase = 'case-select' | 'diagnosis' | 'surgery3d' | 'result';
 
-  if (game === 'speed') return <AppShell><SpeedRound onBack={() => setGame('menu')} /></AppShell>;
-  if (game === 'matching') return <AppShell><MatchingGame onBack={() => setGame('menu')} /></AppShell>;
-  if (game === 'truefalse') return <AppShell><TrueFalseBlitz onBack={() => setGame('menu')} /></AppShell>;
-  if (game === 'flashcard') return <AppShell><FlashcardFlip onBack={() => setGame('menu')} /></AppShell>;
-  if (game === 'memory') return <AppShell><MemoryMatch onBack={() => setGame('menu')} /></AppShell>;
-  if (game === 'riddle') return <AppShell><RiddleGame onBack={() => setGame('menu')} /></AppShell>;
-  if (game === 'dna') return <AppShell><DNABuilder onBack={() => setGame('menu')} /></AppShell>;
-  if (game === 'balancer') return <AppShell><EquationBalancer onBack={() => setGame('menu')} /></AppShell>;
-  if (game === 'organelle') return <AppShell><OrganelleMap onBack={() => setGame('menu')} /></AppShell>;
+function OperationGame({ onBack }: { onBack: () => void }) {
+  const { t } = useTheme();
+  const { updateXP } = useAuth();
+  const [selCase,    setSelCase]    = useState<OpCase | null>(null);
+  const [phase,      setPhase]      = useState<OpPhase>('case-select');
+  const [surgScore,  setSurgScore]  = useState(0);
+  const [xpFinal,    setXpFinal]    = useState(0);
+  const [diagErr,    setDiagErr]    = useState(0);
+  const [diagFlash,  setDiagFlash]  = useState<'ok' | 'bad' | null>(null);
+  const [confetti,   setConfetti]   = useState(false);
+
+  const startCase = (c: OpCase) => {
+    setSelCase(c); setPhase('diagnosis'); setSurgScore(0); setDiagErr(0); setXpFinal(0);
+  };
+
+  const handleDiagAnswer = (ok: boolean) => {
+    if (diagFlash) return;
+    if (ok) {
+      setDiagFlash('ok');
+      setTimeout(() => { setDiagFlash(null); setPhase('surgery3d'); }, 700);
+    } else {
+      setDiagErr(e => e + 1);
+      setDiagFlash('bad');
+      setTimeout(() => setDiagFlash(null), 500);
+    }
+  };
+
+  const handleSurgeryDone = useCallback((score: number) => {
+    setSurgScore(score);
+    setPhase('result');
+  }, []);
+
+  // Award XP when result phase is reached — run once per result
+  useEffect(() => {
+    if (phase === 'result' && selCase) {
+      const xp = Math.max(10, Math.round(surgScore / 100 * selCase.xp) - diagErr * 5);
+      setXpFinal(xp);
+      updateXP(xp);
+      setConfetti(xp > 60);
+    }
+    // intentionally depends only on phase so it fires once when entering result
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
+  const bg   = selCase?.bg       ?? '#030712';
+  const grad = selCase?.gradient ?? 'from-emerald-500 to-teal-700';
+
+  // ── Case select ──────────────────────────────────────────────────────────────
+  if (phase === 'case-select') return (
+    <div className="max-w-lg mx-auto px-4 py-6">
+      <GameStyles />
+      <button onClick={onBack} className={`text-sm mb-5 ${t.textMuted}`}>← Обратно</button>
+      <h2 className={`text-2xl font-black mb-1 ${t.heading}`}>🔬 3D Операционна зала</h2>
+      <p className={`text-sm ${t.textMuted} mb-5`}>Диагностика + 3D хирургична симулация</p>
+      <div className="space-y-3">
+        {OP_CASES.map(c => (
+          <button key={c.id} onClick={() => startCase(c)}
+            className={`w-full p-5 rounded-2xl text-left bg-gradient-to-r ${c.gradient} text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg anim-slide-up`}>
+            <div className="flex items-center gap-3">
+              <span className="text-4xl">{c.emoji}</span>
+              <div>
+                <div className="font-black text-lg">{c.name}</div>
+                <div className="text-white/70 text-xs mt-0.5">до {c.xp} XP · 3D хирургия</div>
+              </div>
+              <span className="ml-auto text-2xl">→</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  // ── Diagnosis ─────────────────────────────────────────────────────────────
+  if (phase === 'diagnosis') return (
+    <div className="max-w-lg mx-auto px-4 py-4" style={{ minHeight: '100vh', background: bg }}>
+      <GameStyles />
+      <div className="flex items-center gap-2 mb-4">
+        <button onClick={onBack} className="text-white/50 text-sm">← Изход</button>
+        <div className="flex-1 flex gap-1 mx-2">
+          {['Диагноза', '3D Хирургия'].map((s, i) => (
+            <div key={s} className={`flex-1 h-1.5 rounded-full ${i === 0 ? 'bg-white' : 'bg-white/20'}`} />
+          ))}
+        </div>
+        <span className="text-white/50 text-xs">1/2</span>
+      </div>
+      <div className={`rounded-2xl p-4 mb-4`} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div className="text-white/60 text-xs font-bold uppercase mb-2">Симптоми на пациента</div>
+        {selCase!.symptoms.map(s => <div key={s} className="text-white text-sm py-1">{s}</div>)}
+      </div>
+      <div className="text-white/70 text-sm font-bold mb-3">Кой орган е засегнат?</div>
+      <div className="grid grid-cols-2 gap-3">
+        {shuffle([...selCase!.organs]).map(o => (
+          <button key={o.name} onClick={() => handleDiagAnswer(o.ok)}
+            className={`p-4 rounded-2xl font-bold text-center transition-all hover:scale-[1.03] active:scale-[0.97] ${
+              diagFlash === 'ok' && o.ok   ? 'bg-green-500 text-white scale-105' :
+              diagFlash === 'bad' && !o.ok ? 'bg-red-500/50 text-white anim-shake' :
+              'bg-white/10 text-white hover:bg-white/20'
+            }`}>
+            <div className="text-3xl mb-1">{o.emoji}</div>
+            <div className="text-sm">{o.name}</div>
+          </button>
+        ))}
+      </div>
+      {diagErr > 0 && <p className="text-red-400 text-xs text-center mt-3">❌ {diagErr} грешни опита</p>}
+    </div>
+  );
+
+  // ── 3D Surgery ────────────────────────────────────────────────────────────
+  if (phase === 'surgery3d') return (
+    <div style={{ minHeight: '100vh', background: bg, display: 'flex', flexDirection: 'column' }}>
+      <GameStyles />
+      {/* Slim header */}
+      <div className="flex items-center gap-2 px-4 py-3 flex-shrink-0">
+        <button onClick={onBack} className="text-white/50 text-sm">← Изход</button>
+        <div className="flex-1 flex gap-1 mx-2">
+          {['Диагноза', '3D Хирургия'].map((s, i) => (
+            <div key={s} className="flex-1 h-1.5 rounded-full bg-white" />
+          ))}
+        </div>
+        <span className="text-white/50 text-xs">2/2</span>
+      </div>
+      <div className="text-center text-white/40 text-xs pb-2">
+        Намери и кликни 5-те рани върху 3D модела
+      </div>
+      {/* 3D viewer fills remaining space */}
+      <div className="flex-1" style={{ minHeight: 340 }}>
+        <Operation3D
+          caseId={selCase!.id}
+          bg={bg}
+          onDone={handleSurgeryDone}
+        />
+      </div>
+    </div>
+  );
+
+  // ── Result ───────────────────────────────────────────────────────────────
+  // Guard: selCase must be set to reach result phase
+  if (!selCase) return null;
+
+  return (
+    <div className="max-w-lg mx-auto px-4 py-8" style={{ minHeight: '100vh', background: bg }}>
+      {confetti && <Confetti />}
+      <GameStyles />
+      <div className="text-center">
+        <div className="text-6xl mb-3">{surgScore >= 80 ? '🏆' : surgScore >= 50 ? '👍' : '💪'}</div>
+        <h2 className="text-white font-black text-2xl mb-1">Операцията завърши!</h2>
+        <div className={`text-5xl font-black bg-gradient-to-r ${grad} bg-clip-text text-transparent mb-2 anim-pop`}>
+          {surgScore}%
+        </div>
+        <div className="text-white/60 text-sm mb-5">+{xpFinal} XP · {selCase.name}</div>
+        <div className="space-y-2 mb-5 max-w-xs mx-auto">
+          <div className="flex justify-between items-center px-4 py-2 rounded-xl bg-white/5 text-sm text-white">
+            <span>🔍 Диагноза</span>
+            <span className="font-bold">{diagErr === 0 ? '✅ Перфектно' : `❌ ${diagErr} грешки`}</span>
+          </div>
+          <div className="flex justify-between items-center px-4 py-2 rounded-xl bg-white/5 text-sm text-white">
+            <span>🔬 3D Хирургия</span>
+            <span className="font-bold">{surgScore}%</span>
+          </div>
+        </div>
+        <div className="text-white/50 text-xs px-4 py-3 rounded-2xl bg-white/5 mb-5 text-left">
+          📚 {selCase.fact}
+        </div>
+        <div className="flex gap-3">
+          <button onClick={() => { setPhase('case-select'); setSelCase(null); }}
+            className="flex-1 py-3 rounded-2xl font-bold text-white bg-white/10 hover:bg-white/20 transition-all">
+            ← Избери случай
+          </button>
+          <button onClick={() => startCase(selCase)}
+            className={`flex-1 py-3 rounded-2xl font-bold text-white bg-gradient-to-r ${grad} hover:scale-105 transition-all shadow-lg`}>
+            🔄 Повтори
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── GAMES MENU ───────────────────────────────────────────────────────────────
+type GameCategory = 'all' | 'classic' | 'lab' | 'new';
+
+interface GameEntry {
+  id: GameType;
+  title: string;
+  desc: string;
+  emoji: string;
+  gradient: string;
+  xp: string;
+  stars: 1 | 2 | 3;
+  category: 'classic' | 'lab' | 'new';
+  isNew?: boolean;
+}
+
+const GAME_LIST: GameEntry[] = [
+  { id: 'speed',     title: 'Бърз кръг',              desc: '60 сек · въпроси · серии за бонус',         emoji: '⚡',  gradient: 'from-yellow-400 to-orange-500', xp: 'до 300',  stars: 1, category: 'classic' },
+  { id: 'truefalse', title: 'Вярно / Грешно',          desc: '45 сек · бързи твърдения',                  emoji: '🧠',  gradient: 'from-green-400 to-teal-500',    xp: 'до 200',  stars: 1, category: 'classic' },
+  { id: 'flashcard', title: 'Флашкарти',               desc: 'Обърни картата · Знам / Уча',               emoji: '🃏',  gradient: 'from-purple-400 to-pink-500',   xp: 'до 100',  stars: 1, category: 'classic' },
+  { id: 'memory',    title: 'Памет',                   desc: 'Намери двойките термин–определение',         emoji: '🎴',  gradient: 'from-blue-400 to-cyan-500',     xp: 'до 100',  stars: 2, category: 'classic' },
+  { id: 'matching',  title: 'Свържи термините',        desc: '7 двойки · термин към определение',         emoji: '🧩',  gradient: 'from-rose-400 to-pink-500',     xp: 'до 100',  stars: 2, category: 'classic' },
+  { id: 'riddle',    title: 'Кой съм аз?',             desc: '5 рунда · улики → познай термина',          emoji: '🔍',  gradient: 'from-violet-500 to-indigo-600', xp: 'до 150',  stars: 2, category: 'classic' },
+  { id: 'dna',       title: 'ДНК Строител',            desc: 'Комплементарни бази · A↔T · G↔C',           emoji: '🧬',  gradient: 'from-pink-500 to-rose-600',     xp: 'до 32',   stars: 2, category: 'lab' },
+  { id: 'balancer',  title: 'Балансирай уравнение',    desc: '6 химични уравнения · коефициенти',         emoji: '⚗️',  gradient: 'from-indigo-500 to-purple-600', xp: 'до 90',   stars: 3, category: 'lab' },
+  { id: 'organelle', title: 'Клетъчна карта',          desc: 'Намери органелите в SVG клетката',          emoji: '🔬',  gradient: 'from-teal-400 to-emerald-500',  xp: 'до 80',   stars: 2, category: 'lab' },
+  { id: 'drugs',     title: 'Лекарства & Рецептори',  desc: 'Свържи лекарство с механизъм на действие',  emoji: '💊',  gradient: 'from-sky-500 to-blue-700',      xp: 'до 100',  stars: 3, category: 'new', isNew: true },
+  { id: 'immune',    title: 'Имунна отбрана',          desc: 'Поставяй имунни клетки · 3 вълни врагове',  emoji: '🦠',  gradient: 'from-red-500 to-rose-700',      xp: 'до 150',  stars: 3, category: 'new', isNew: true },
+  { id: 'operation', title: 'Операция! 3D',             desc: 'Диагноза + 3D хирургия · кликни раните',   emoji: '🔬',  gradient: 'from-emerald-500 to-teal-700',  xp: 'до 100',  stars: 3, category: 'new', isNew: true },
+];
+
+const CAT_TABS: { id: GameCategory; label: string; emoji: string }[] = [
+  { id: 'all',     label: 'Всички',     emoji: '🎮' },
+  { id: 'classic', label: 'Класически', emoji: '⚡' },
+  { id: 'lab',     label: 'Лаборатория',emoji: '🔬' },
+  { id: 'new',     label: 'Нови',       emoji: '✨' },
+];
+
+function Stars({ n }: { n: 1 | 2 | 3 }) {
+  return (
+    <span className="text-[11px]">
+      {'⭐'.repeat(n)}{'☆'.repeat(3 - n)}
+    </span>
+  );
+}
+
+export default function GamesPage() {
+  const { t, mode } = useTheme();
+  const [game, setGame] = useState<GameType>('menu');
+  const [cat, setCat] = useState<GameCategory>('all');
+
+  if (game === 'speed')     return <AppShell><GameStyles /><SpeedRound     onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'matching')  return <AppShell><GameStyles /><MatchingGame   onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'truefalse') return <AppShell><GameStyles /><TrueFalseBlitz onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'flashcard') return <AppShell><GameStyles /><FlashcardFlip  onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'memory')    return <AppShell><GameStyles /><MemoryMatch    onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'riddle')    return <AppShell><GameStyles /><RiddleGame     onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'dna')       return <AppShell><GameStyles /><DNABuilder     onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'balancer')  return <AppShell><GameStyles /><EquationBalancer onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'organelle') return <AppShell><GameStyles /><OrganelleMap   onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'drugs')     return <AppShell><GameStyles /><DrugReceptorGame onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'immune')    return <AppShell><GameStyles /><ImmuneDefense  onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'operation') return <AppShell><GameStyles /><OperationGame  onBack={() => setGame('menu')} /></AppShell>;
+
+  const visible = cat === 'all' ? GAME_LIST : GAME_LIST.filter(g => g.category === cat);
+  const newCount = GAME_LIST.filter(g => g.isNew).length;
 
   return (
     <AppShell>
       <GameStyles />
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className={`text-3xl font-black ${t.heading}`}>Игри 🎮</h1>
-          <p className={`mt-1 ${t.textMuted}`}>9 начина да учиш докато се забавляваш</p>
+      <div className="max-w-3xl mx-auto px-4 py-6">
+
+        {/* Header */}
+        <div className="mb-5">
+          <h1 className={`text-2xl md:text-3xl font-black ${t.heading}`}>Игри 🎮</h1>
+          <p className={`mt-0.5 text-sm ${t.textMuted}`}>{GAME_LIST.length} игри · учи докато се забавляваш</p>
         </div>
 
-        <div className="space-y-4">
-          {gameList.map((g, i) => (
+        {/* Category tabs */}
+        <div className="flex gap-2 mb-5 overflow-x-auto scrollbar-none pb-1">
+          {CAT_TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setCat(tab.id)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold whitespace-nowrap flex-shrink-0 transition-all ${
+                cat === tab.id
+                  ? mode === 'soft'
+                    ? 'bg-gradient-to-r from-pink-400 to-purple-500 text-white shadow-md scale-105'
+                    : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md scale-105'
+                  : `${t.card} ${t.text} ${t.cardHover}`
+              }`}
+            >
+              <span>{tab.emoji}</span>
+              <span>{tab.label}</span>
+              {tab.id === 'new' && (
+                <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">{newCount}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Game grid — 2 cols mobile, 3 cols desktop */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+          {visible.map((g, i) => (
             <button
               key={g.id}
-              onClick={() => setGame(g.id as GameType)}
-              className={`w-full rounded-3xl p-6 text-left transition-all hover:scale-[1.02] active:scale-[0.99] ${t.card} ${t.cardHover} anim-slide-up shadow-sm hover:shadow-md`}
-              style={{ animationDelay: `${i * 0.07}s` }}
+              onClick={() => setGame(g.id)}
+              className={`group relative rounded-2xl md:rounded-3xl overflow-hidden text-left transition-all hover:scale-[1.03] active:scale-[0.97] hover:shadow-xl anim-slide-up ${t.card}`}
+              style={{ animationDelay: `${i * 0.05}s` }}
             >
-              <div className="flex items-center gap-4">
-                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${g.gradient} flex items-center justify-center text-3xl shadow-lg ${g.shadow} flex-shrink-0`}>
+              {/* Top gradient strip */}
+              <div className={`bg-gradient-to-br ${g.gradient} p-4 pb-3`}>
+                {g.isNew && (
+                  <span className="absolute top-2 right-2 bg-white/90 text-red-500 text-[10px] font-black px-2 py-0.5 rounded-full">
+                    НОВО
+                  </span>
+                )}
+                <div className="text-3xl md:text-4xl mb-1 transition-transform duration-200 group-hover:scale-110">
                   {g.emoji}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className={`text-xl font-black ${t.heading}`}>{g.title}</h2>
-                  <p className={`text-sm ${t.textMuted} mt-0.5`}>{g.desc}</p>
+              </div>
+
+              {/* Card body */}
+              <div className="p-3">
+                <div className={`font-black text-sm md:text-base leading-tight ${t.heading} mb-1`}>{g.title}</div>
+                <div className={`text-[11px] md:text-xs ${t.textMuted} leading-snug line-clamp-2`}>{g.desc}</div>
+
+                {/* Meta row */}
+                <div className="flex items-center justify-between mt-2">
+                  <Stars n={g.stars} />
+                  <span className={`text-[10px] md:text-xs font-bold ${t.primaryText}`}>⚡{g.xp} XP</span>
                 </div>
-                <span className={`text-xl ${t.textMuted} flex-shrink-0`}>→</span>
               </div>
             </button>
           ))}
         </div>
+
       </div>
     </AppShell>
   );

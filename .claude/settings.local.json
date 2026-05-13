@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\dimit\\\\Documents\\\\Projects\\\\Home\\\\medvibe\\\\public\\\\3D\" | Select-Object Name, @{n='MB';e={[math]::Round\\($_.Length/1MB,2\\)}})",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:3d.nih.gov)",
+      "WebFetch(domain:caskanatomy.info)",
+      "WebFetch(domain:humanatlas.io)",
+      "WebFetch(domain:hubmapconsortium.github.io)",
+      "Bash(gh api *)",
+      "Bash(python3 -c \"import sys,json; [print\\(f['name'], f.get\\('download_url',''\\)\\) for f in json.load\\(sys.stdin\\) if f['name'].endswith\\('.glb'\\)]\")",
+      "Bash(curl -k -L -s -o /dev/null -w \"%{http_code} %{url_effective}\" \"https://caskanatomy.info/open3dmodelfiles/muscles-thorax-abdomen/muscles-thorax-abdomen.glb\")",
+      "Bash(curl -k -L -s -o /dev/null -w \"%{http_code} %{url_effective}\" \"https://caskanatomy.info/open3dmodelfiles/muscles-thorax-abdomen-back/muscles-thorax-abdomen-back-glb.zip\")",
+      "Bash(curl -k -L -s -o /dev/null -w \"%{http_code} %{url_effective}\" \"https://caskanatomy.info/open3dviewermodels/muscles-thorax-abdomen.glb\")",
+      "Bash(curl -k -s \"https://caskanatomy.info/open3dviewertutorials/\")",
+      "Bash(curl -k -s \"https://caskanatomy.info/open3dviewer/\")",
+      "Bash(curl -k -s \"https://caskanatomy.info/open3dviewer/?model=muscles-thorax-abdomen\")",
+      "Bash(curl -k -s \"https://caskanatomy.info/open3dviewer/js/babylon.js\")",
+      "Bash(curl -k -s -o /dev/null -w \"%{http_code}\" \"https://caskanatomy.info/open3dviewer/models.json\")",
+      "Bash(curl -k -s -o /dev/null -w \"%{http_code}\" \"https://caskanatomy.info/open3dviewer/config.json\")",
+      "Bash(curl -k -s -o /dev/null -w \"%{http_code}\" \"https://caskanatomy.info/open3dmodelfiles/muscles-thorax-abdomen-back-glb.zip\")"
+    ]
+  }
+}
