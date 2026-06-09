@@ -260,3 +260,102 @@ input, select, textarea {
   height: 3px;
   border-radius: 0 0 3px 3px;
 }
+
+/* ─── Brain / Neuro effects ─────────────────────────────────────── */
+
+/* Synaptic pulse animation */
+@keyframes synapticPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.6); }
+  70%  { box-shadow: 0 0 0 14px rgba(124, 58, 237, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0); }
+}
+.animate-synaptic-pulse { animation: synapticPulse 1.8s ease-out infinite; }
+
+/* Neural pathway draw animation */
+@keyframes neuralDraw {
+  from { stroke-dashoffset: 1000; opacity: 0; }
+  to   { stroke-dashoffset: 0;    opacity: 1; }
+}
+.animate-neural-draw {
+  stroke-dasharray: 1000;
+  animation: neuralDraw 1.5s ease-out forwards;
+}
+
+/* Violet neon glow */
+.neon-violet {
+  box-shadow: 0 0 10px rgba(124, 58, 237, 0.4), 0 0 30px rgba(124, 58, 237, 0.15);
+}
+.neon-violet-text {
+  text-shadow: 0 0 10px rgba(168, 85, 247, 0.7), 0 0 20px rgba(168, 85, 247, 0.4);
+}
+
+/* Brain shimmer — violet / cyan / blue */
+.brain-shimmer-text {
+  background: linear-gradient(90deg, #7c3aed, #06b6d4, #a855f7, #3b82f6, #7c3aed);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
+
+/* Language toggle pill */
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.lang-toggle-bg { background: rgba(124, 58, 237, 0.2); border: 1px solid rgba(124, 58, 237, 0.4); color: #c4b5fd; }
+.lang-toggle-active { background: #7c3aed; border: 1px solid #7c3aed; color: #fff; }
+
+/* Pulse ring for brain diagram hotspots */
+@keyframes pulseRing {
+  0%   { transform: scale(1);   opacity: 0.8; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+.pulse-ring { animation: pulseRing 1.5s ease-out infinite; }
+
+/* Floating neuron / brain particle effect */
+@keyframes neuronFloat {
+  0%   { transform: translateY(0px) translateX(0px) scale(1);    opacity: 0.7; }
+  25%  { transform: translateY(-12px) translateX(6px) scale(1.05); opacity: 1; }
+  50%  { transform: translateY(-6px) translateX(-4px) scale(0.97); opacity: 0.8; }
+  75%  { transform: translateY(-16px) translateX(8px) scale(1.02); opacity: 0.9; }
+  100% { transform: translateY(0px) translateX(0px) scale(1);    opacity: 0.7; }
+}
+.animate-neuron-float { animation: neuronFloat 6s ease-in-out infinite; }
+
+/* Synapse fire effect */
+@keyframes synapseFire {
+  0%   { opacity: 0; transform: scale(0.5); }
+  50%  { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+.animate-synapse-fire { animation: synapseFire 0.6s ease-out; }
+
+/* 3-column stagger for brain cards */
+.stagger-brain > * { animation: slideUp 0.35s ease-out both; }
+.stagger-brain > *:nth-child(1)  { animation-delay: 0.05s; }
+.stagger-brain > *:nth-child(2)  { animation-delay: 0.10s; }
+.stagger-brain > *:nth-child(3)  { animation-delay: 0.15s; }
+.stagger-brain > *:nth-child(4)  { animation-delay: 0.20s; }
+.stagger-brain > *:nth-child(5)  { animation-delay: 0.25s; }
+.stagger-brain > *:nth-child(6)  { animation-delay: 0.30s; }
+.stagger-brain > *:nth-child(7)  { animation-delay: 0.35s; }
+.stagger-brain > *:nth-child(8)  { animation-delay: 0.40s; }
+.stagger-brain > *:nth-child(9)  { animation-delay: 0.45s; }
+.stagger-brain > *:nth-child(10) { animation-delay: 0.50s; }
+
+/* Modern dot-grid pattern for brain page backgrounds */
+.brain-grid-bg {
+  background-image: radial-gradient(rgba(124, 58, 237, 0.15) 1px, transparent 1px);
+  background-size: 32px 32px;
+}

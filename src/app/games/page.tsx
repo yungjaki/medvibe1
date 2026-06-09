@@ -19,7 +19,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { questions, tfStatements, flashCards, riddles, Riddle } from '@/lib/data/questions';
 
-type GameType = 'menu' | 'speed' | 'matching' | 'truefalse' | 'flashcard' | 'memory' | 'riddle' | 'dna' | 'balancer' | 'organelle' | 'drugs' | 'immune' | 'operation';
+type GameType = 'menu' | 'speed' | 'matching' | 'truefalse' | 'flashcard' | 'memory' | 'riddle' | 'dna' | 'balancer' | 'organelle' | 'drugs' | 'immune' | 'operation' | 'cranial' | 'synapse' | 'brainlobes' | 'neurotransmitter' | 'brainpaths';
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -2189,6 +2189,1104 @@ function OperationGame({ onBack }: { onBack: () => void }) {
   );
 }
 
+// ─── CRANIAL NERVE CHALLENGE ─────────────────────────────────────────────────
+interface CranialNerve {
+  num: string;
+  name: string;
+  latin: string;
+  func: string;
+}
+
+const CRANIAL_NERVES: CranialNerve[] = [
+  { num: 'I',    name: 'Обонятелен',         latin: 'Olfactory',          func: 'Отговаря за обонянието' },
+  { num: 'II',   name: 'Зрителен',           latin: 'Optic',              func: 'Отговаря за зрението' },
+  { num: 'III',  name: 'Окулемоторен',       latin: 'Oculomotor',         func: 'Движение на очните ябълки (4 мускула), акомодация, зенична реакция' },
+  { num: 'IV',   name: 'Трохлеарен',         latin: 'Trochlear',          func: 'Инервира m. obliquus superior — завъртане на окото надолу и навътре' },
+  { num: 'V',    name: 'Тригеминален',       latin: 'Trigeminal',         func: 'Сетивност на лицето (3 клона) и дъвкателни мускули' },
+  { num: 'VI',   name: 'Абдуцентен',         latin: 'Abducens',           func: 'Инервира m. rectus lateralis — отвеждане на окото навън' },
+  { num: 'VII',  name: 'Лицев',              latin: 'Facial',             func: 'Мимически мускули, вкус (предни 2/3 на езика), слюнчени жлези' },
+  { num: 'VIII', name: 'Вестибулокохлеарен', latin: 'Vestibulocochlear',  func: 'Слух и равновесие' },
+  { num: 'IX',   name: 'Глософарингеален',   latin: 'Glossopharyngeal',   func: 'Вкус (задна 1/3 на езика), гълтане, паротидна жлеза' },
+  { num: 'X',    name: 'Вагусов',            latin: 'Vagus',              func: 'Парасимпатик за гръден кош и корем, гласни струни, гълтане' },
+  { num: 'XI',   name: 'Аксесорен',          latin: 'Accessory',          func: 'Инервира m. sternocleidomastoideus и m. trapezius' },
+  { num: 'XII',  name: 'Хипоглосен',         latin: 'Hypoglossal',        func: 'Всички мускули на езика (движение при говор и гълтане)' },
+];
+
+function buildCranialQuestion(pool: CranialNerve[]): { nerve: CranialNerve; options: CranialNerve[] } {
+  const nerve = pool[Math.floor(Math.random() * pool.length)];
+  const distractors = shuffle(CRANIAL_NERVES.filter(n => n.num !== nerve.num)).slice(0, 3);
+  const options = shuffle([nerve, ...distractors]);
+  return { nerve, options };
+}
+
+function CranialNerveChallenge({ onBack }: { onBack: () => void }) {
+  const { t } = useTheme();
+  const { updateXP } = useAuth();
+  const [phase, setPhase] = useState<'idle' | 'countdown' | 'playing' | 'done'>('idle');
+  const [countdown, setCountdown] = useState(3);
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [qKey, setQKey] = useState(0);
+  const [current, setCurrent] = useState<{ nerve: CranialNerve; options: CranialNerve[] }>(() => buildCranialQuestion(CRANIAL_NERVES));
+  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [revealed, setRevealed] = useState<CranialNerve | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useEffect(() => {
+    if (phase === 'countdown' && countdown > 0) {
+      const id = setTimeout(() => setCountdown(c => c - 1), 1000);
+      return () => clearTimeout(id);
+    }
+    if (phase === 'countdown' && countdown === 0) setPhase('playing');
+  }, [phase, countdown]);
+
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    if (timeLeft <= 0) { setPhase('done'); updateXP(score * 10); return; }
+    const id = setTimeout(() => setTimeLeft(x => x - 1), 1000);
+    return () => clearTimeout(id);
+  });
+
+  const handleAnswer = useCallback((option: CranialNerve) => {
+    if (phase !== 'playing' || feedback) return;
+    const isCorrect = option.num === current.nerve.num;
+    setTotal(x => x + 1);
+    setFeedback(isCorrect ? 'correct' : 'wrong');
+    setRevealed(current.nerve);
+    if (isCorrect) {
+      const ns = streak + 1;
+      const mult = ns >= 3 ? 2 : 1;
+      setScore(s => s + 10 * mult);
+      setStreak(ns);
+      setBestStreak(bs => Math.max(bs, ns));
+    } else {
+      setStreak(0);
+    }
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      setFeedback(null);
+      setRevealed(null);
+      setQKey(k => k + 1);
+      setCurrent(buildCranialQuestion(CRANIAL_NERVES));
+    }, 1400);
+  }, [phase, feedback, current, streak]);
+
+  const start = () => {
+    setPhase('countdown');
+    setCountdown(3);
+    setTimeLeft(60);
+    setScore(0);
+    setStreak(0);
+    setBestStreak(0);
+    setTotal(0);
+    setQKey(0);
+    setCurrent(buildCranialQuestion(CRANIAL_NERVES));
+    setFeedback(null);
+    setRevealed(null);
+  };
+
+  if (phase === 'idle' || phase === 'done') {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-8">
+        <GameStyles />
+        <button onClick={onBack} className={`text-sm mb-6 ${t.textMuted} hover:${t.primaryText} transition-colors`}>← Обратно</button>
+        <div className={`rounded-3xl p-8 text-center ${t.card} anim-slide-up`}>
+          <div className="text-6xl mb-4">🧠</div>
+          <h2 className={`text-3xl font-black mb-2 ${t.heading}`}>Черепни нерви</h2>
+          <p className={`${t.textMuted} mb-6`}>60 секунди. Прочети функцията и познай черепния нерв (I–XII). Серия от 3+ дава 2× XP!</p>
+          {phase === 'done' && (
+            <div className="mb-6 space-y-2">
+              <div className={`text-5xl font-black bg-gradient-to-r ${t.xpBar} bg-clip-text text-transparent anim-pop`}>{score}</div>
+              <div className={`text-sm ${t.textMuted}`}>{total} отговора · Най-дълга серия: {bestStreak}</div>
+              <div className={`text-sm font-bold ${t.primaryText}`}>+{score * 10} XP спечелени</div>
+            </div>
+          )}
+          <button onClick={start} className={`w-full py-4 rounded-2xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 ${t.primary} shadow-lg`}>
+            {phase === 'done' ? '🔄 Играй отново' : '🧠 Старт!'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === 'countdown') {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        <GameStyles />
+        <div key={countdown} className={`text-9xl font-black anim-pop ${t.heading}`}>{countdown || '🧠'}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-lg mx-auto px-4 py-6">
+      <GameStyles />
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex gap-4 items-center">
+          <span className={`font-black text-xl ${t.heading}`}>⚡{score}</span>
+          {streak >= 3 && (
+            <span className="text-orange-400 font-bold text-sm bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 rounded-full anim-pop">
+              🔥 Серия ×{streak}
+            </span>
+          )}
+        </div>
+        <span className={`text-2xl font-black tabular-nums ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : t.primaryText}`}>
+          {timeLeft}s
+        </span>
+      </div>
+
+      <div className={`h-2 rounded-full mb-6 ${t.progressBg}`}>
+        <div
+          className={`h-2 rounded-full transition-all duration-1000 ${timeLeft <= 10 ? 'bg-red-500' : 'bg-gradient-to-r from-violet-500 to-purple-600'}`}
+          style={{ width: `${(timeLeft / 60) * 100}%` }}
+        />
+      </div>
+
+      <div
+        key={`q-${qKey}`}
+        className={`rounded-3xl p-6 mb-5 anim-slide-up ${feedback === 'correct' ? t.correct : feedback === 'wrong' ? t.wrong : t.card}`}
+      >
+        <div className={`text-xs font-bold uppercase tracking-wider mb-2 ${t.textMuted}`}>Какъв е черепният нерв?</div>
+        <p className={`text-lg font-bold leading-relaxed ${t.heading}`}>{current.nerve.func}</p>
+        {revealed && (
+          <div className="mt-3 pt-3 border-t border-white/10 anim-slide-up">
+            <span className="text-sm font-black text-violet-400">{revealed.num} — {revealed.name}</span>
+            <span className={`text-xs ml-2 ${t.textMuted}`}>({revealed.latin})</span>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {current.options.map((opt, idx) => (
+          <button
+            key={opt.num}
+            onClick={() => handleAnswer(opt)}
+            disabled={!!feedback}
+            className={`p-4 rounded-2xl font-semibold text-sm transition-all active:scale-95 hover:scale-[1.03] anim-slide-up ${
+              feedback && opt.num === current.nerve.num
+                ? 'bg-green-500 text-white border-2 border-green-400'
+                : feedback && opt.num !== current.nerve.num
+                ? `${t.card} ${t.text} opacity-40 border-2 border-transparent`
+                : `${t.card} ${t.text} border-2 border-transparent ${t.cardHover}`
+            }`}
+            style={{ animationDelay: `${idx * 0.05}s` }}
+          >
+            <span className={`block text-xs mb-1 font-black text-violet-500`}>{opt.num}</span>
+            <span className="block font-bold">{opt.name}</span>
+            <span className={`block text-[10px] ${t.textMuted} mt-0.5`}>{opt.latin}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── SYNAPSE BUILDER ─────────────────────────────────────────────────────────
+interface SynapseScenario {
+  name: string;
+  neurotransmitter: string;
+  color: string;
+}
+
+const SYNAPSE_STEPS = [
+  'Акционен потенциал пристига в пресинаптичния терминал',
+  'Калциеви канали (Ca²⁺) се отварят',
+  'Ca²⁺ навлиза в терминала',
+  'Синаптичните везикули се сливат с мембраната',
+  'Невротрансмитерите се освобождават в синаптичната цепнатина',
+  'НТ се свързват с постсинаптичните рецептори',
+  'Постсинаптичен потенциал (EPSP или IPSP)',
+  'НТ се разграждат или реабсорбират (рецикличен транспорт)',
+];
+
+const SYNAPSE_SCENARIOS: SynapseScenario[] = [
+  { name: 'Ацетилхолин синапс',  neurotransmitter: 'Ацетилхолин (ACh)',  color: 'from-blue-500 to-cyan-600' },
+  { name: 'Допаминов синапс',     neurotransmitter: 'Допамин (DA)',        color: 'from-purple-500 to-violet-600' },
+  { name: 'ГАМК-ергичен синапс',  neurotransmitter: 'ГАМК (GABA)',         color: 'from-emerald-500 to-teal-600' },
+];
+
+function SynapseBuilder({ onBack }: { onBack: () => void }) {
+  const { t } = useTheme();
+  const { updateXP } = useAuth();
+  const [phase, setPhase] = useState<'idle' | 'countdown' | 'playing' | 'done'>('idle');
+  const [countdown, setCountdown] = useState(3);
+  const [timeLeft, setTimeLeft] = useState(90);
+  const [scenarioIdx, setScenarioIdx] = useState(0);
+  const [shuffled, setShuffled] = useState<string[]>([]);
+  const [placed, setPlaced] = useState<string[]>([]);
+  const [wrongIdx, setWrongIdx] = useState<number | null>(null);
+  const [score, setScore] = useState(0);
+  const [confetti, setConfetti] = useState(false);
+
+  useEffect(() => {
+    if (phase === 'countdown' && countdown > 0) {
+      const id = setTimeout(() => setCountdown(c => c - 1), 1000);
+      return () => clearTimeout(id);
+    }
+    if (phase === 'countdown' && countdown === 0) setPhase('playing');
+  }, [phase, countdown]);
+
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    if (timeLeft <= 0) { setPhase('done'); updateXP(score * 8); return; }
+    const id = setTimeout(() => setTimeLeft(x => x - 1), 1000);
+    return () => clearTimeout(id);
+  });
+
+  const start = (sIdx?: number) => {
+    const idx = sIdx ?? 0;
+    setScenarioIdx(idx);
+    setShuffled(shuffle([...SYNAPSE_STEPS]));
+    setPlaced([]);
+    setWrongIdx(null);
+    setScore(0);
+    setConfetti(false);
+    setTimeLeft(90);
+    setPhase('countdown');
+    setCountdown(3);
+  };
+
+  const handleStepClick = (step: string) => {
+    if (phase !== 'playing') return;
+    const expectedIdx = placed.length;
+    if (SYNAPSE_STEPS[expectedIdx] === step) {
+      const newPlaced = [...placed, step];
+      setPlaced(newPlaced);
+      setWrongIdx(null);
+      const pts = 5 + Math.floor(timeLeft / 10);
+      setScore(s => s + pts);
+      if (newPlaced.length === SYNAPSE_STEPS.length) {
+        setPhase('done');
+        setConfetti(true);
+        updateXP(score + pts + 30);
+      }
+    } else {
+      const idx = shuffled.indexOf(step);
+      setWrongIdx(idx);
+      setScore(s => Math.max(0, s - 2));
+      setTimeout(() => setWrongIdx(null), 600);
+    }
+  };
+
+  if (phase === 'idle' || phase === 'done') {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-8">
+        {confetti && <Confetti />}
+        <GameStyles />
+        <button onClick={onBack} className={`text-sm mb-6 ${t.textMuted}`}>← Обратно</button>
+        <div className={`rounded-3xl p-8 text-center ${t.card} anim-slide-up`}>
+          <div className="text-6xl mb-4">⚡</div>
+          <h2 className={`text-3xl font-black mb-2 ${t.heading}`}>Синапс Билдер</h2>
+          <p className={`${t.textMuted} mb-6`}>Подреди 8-те стъпки на синаптичното предаване в правилния ред. Кликни стъпките последователно!</p>
+          {phase === 'done' && (
+            <div className="mb-5 space-y-2">
+              <div className={`text-5xl font-black bg-gradient-to-r ${t.xpBar} bg-clip-text text-transparent anim-pop`}>{score}</div>
+              <div className={`text-sm ${t.textMuted}`}>точки · +{score + 30} XP</div>
+              {confetti && <div className="text-green-500 font-black">🎉 Перфектно! Всички стъпки наред!</div>}
+            </div>
+          )}
+          <div className="space-y-2 mb-5">
+            <div className={`text-xs font-bold uppercase tracking-wider ${t.textMuted} mb-2`}>Избери сценарий:</div>
+            {SYNAPSE_SCENARIOS.map((sc, i) => (
+              <button key={i} onClick={() => start(i)}
+                className={`w-full py-3 px-4 rounded-2xl font-bold text-white text-sm bg-gradient-to-r ${sc.color} hover:scale-105 transition-all`}>
+                {sc.name} — {sc.neurotransmitter}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === 'countdown') {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        <GameStyles />
+        <div key={countdown} className={`text-9xl font-black anim-pop ${t.heading}`}>{countdown || '⚡'}</div>
+      </div>
+    );
+  }
+
+  const scenario = SYNAPSE_SCENARIOS[scenarioIdx];
+
+  return (
+    <div className="max-w-lg mx-auto px-4 py-6">
+      <GameStyles />
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <span className={`font-black text-xl ${t.heading}`}>⚡{score}</span>
+          <span className={`ml-2 text-xs ${t.textMuted}`}>{placed.length}/8 стъпки</span>
+        </div>
+        <span className={`text-2xl font-black tabular-nums ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : t.primaryText}`}>
+          {timeLeft}s
+        </span>
+      </div>
+
+      <div className={`h-2 rounded-full mb-4 ${t.progressBg}`}>
+        <div className={`h-2 rounded-full transition-all duration-1000 bg-gradient-to-r ${timeLeft <= 10 ? 'from-red-500 to-red-600' : scenario.color}`}
+          style={{ width: `${(timeLeft / 90) * 100}%` }} />
+      </div>
+
+      <div className={`rounded-2xl px-4 py-2 mb-4 bg-gradient-to-r ${scenario.color} text-white text-sm font-bold text-center`}>
+        {scenario.name} · {scenario.neurotransmitter}
+      </div>
+
+      {placed.length > 0 && (
+        <div className={`rounded-2xl p-3 mb-4 ${t.card} space-y-1`}>
+          <div className={`text-xs font-bold uppercase tracking-wider ${t.textMuted} mb-2`}>Вече наредени:</div>
+          {placed.map((s, i) => (
+            <div key={i} className="flex gap-2 items-start anim-slide-up">
+              <span className="w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+              <span className={`text-xs ${t.text}`}>{s}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className={`text-xs font-bold uppercase tracking-wider mb-2 ${t.textMuted}`}>
+        Следваща стъпка #{placed.length + 1} — кликни правилната:
+      </div>
+      <div className="space-y-2">
+        {shuffled.filter(s => !placed.includes(s)).map((step, i) => {
+          const isWrong = wrongIdx === shuffled.indexOf(step);
+          return (
+            <button key={step} onClick={() => handleStepClick(step)}
+              className={`w-full p-3 rounded-xl text-sm font-medium text-left transition-all border-2 anim-slide-up ${
+                isWrong
+                  ? `${t.wrong} anim-shake border-red-400`
+                  : `${t.card} ${t.text} border-transparent ${t.cardHover} hover:scale-[1.01]`
+              }`}
+              style={{ animationDelay: `${i * 0.03}s` }}>
+              {step}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── BRAIN LOBE IDENTIFIER ────────────────────────────────────────────────────
+interface BrainLobeQuestion {
+  question: string;
+  lobe: string;
+  explanation: string;
+}
+
+const BRAIN_LOBE_OPTIONS = [
+  'Фронтален дял', 'Париетален дял', 'Темпорален дял',
+  'Окципитален дял', 'Малък мозък', 'Мозъчен ствол',
+];
+
+const BRAIN_LOBE_QUESTIONS: BrainLobeQuestion[] = [
+  { question: 'Планиране, вземане на решения и личност', lobe: 'Фронтален дял', explanation: 'Префронталната кора е отговорна за изпълнителните функции.' },
+  { question: 'Зона на Брока — продукция на реч', lobe: 'Фронтален дял', explanation: 'Зона на Брока (поле 44/45 на Бродман) е в долния фронтален гирус.' },
+  { question: 'Работна памет и краткосрочна памет', lobe: 'Фронтален дял', explanation: 'Дорзолатералната префронтална кора поддържа работната памет.' },
+  { question: 'Първична моторна кора — произволни движения', lobe: 'Фронтален дял', explanation: 'Прецентралният гирус съдържа моторния хомункулус.' },
+  { question: 'Сетивност на кожата, болка и температура', lobe: 'Париетален дял', explanation: 'Постцентралният гирус е първичната соматосетивна кора.' },
+  { question: 'Пространствена ориентация и навигация', lobe: 'Париетален дял', explanation: 'Десният париетален дял е ключов за пространствено осъзнаване.' },
+  { question: 'Герстман синдром: акалкулия, аграфия, пръстова агнозия', lobe: 'Париетален дял', explanation: 'Герстман синдромът настъпва при лезия на ляв долен париетален лобул.' },
+  { question: 'Слух и разбиране на реч', lobe: 'Темпорален дял', explanation: 'Първичната слухова кора е в Хешловите извивки (Sylvian gyri).' },
+  { question: 'Зона на Вернике — разбиране на реч', lobe: 'Темпорален дял', explanation: 'Зона на Вернике е в задния горен темпорален гирус.' },
+  { question: 'Дългосрочна памет и хипокамп', lobe: 'Темпорален дял', explanation: 'Хипокампът е в медиалния темпорален лоб и консолидира памет.' },
+  { question: 'Разпознаване на лица (прозопагнозия при увреда)', lobe: 'Темпорален дял', explanation: 'Fusiform face area е в инферо-темпоралната кора.' },
+  { question: 'Зрение, визуална обработка', lobe: 'Окципитален дял', explanation: 'Калкаринната фисура съдържа V1 (първична зрителна кора).' },
+  { question: 'Зрителна агнозия — вижда, но не разпознава обекти', lobe: 'Окципитален дял', explanation: 'Зрителната агнозия настъпва при увреда на асоциативна зрителна кора.' },
+  { question: 'Хомонимна хемианопсия след инсулт', lobe: 'Окципитален дял', explanation: 'Засягането на зрителна кора дава противоположностранна зрителна загуба.' },
+  { question: 'Координация на движенията, фина моторика', lobe: 'Малък мозък', explanation: 'Малкият мозък сравнява замислено и изпълнено движение.' },
+  { question: 'Атаксия, нистагъм и дизартрия при увреда', lobe: 'Малък мозък', explanation: 'Класическа триада при увреда на малкия мозък (вермис или хемисфери).' },
+  { question: 'Равновесие и постурален рефлекс', lobe: 'Малък мозък', explanation: 'Флокулонодуларен лоб обработва вестибуларна информация.' },
+  { question: 'Дишане и сърдечна честота (жизнено важни центрове)', lobe: 'Мозъчен ствол', explanation: 'Медулата съдържа дихателния и кардиоваскуларния център.' },
+  { question: 'Черепни нерви III–XII излизат оттук', lobe: 'Мозъчен ствол', explanation: 'Мозъчният ствол (средния мозък, мост, медула) е изходна точка на ЧН III–XII.' },
+  { question: 'Ретикуларна формация — будност и съзнание', lobe: 'Мозъчен ствол', explanation: 'Ascending reticular activating system (ARAS) поддържа будността.' },
+  { question: 'Засягане: загуба на болка и температура ипсилатерално на лицето + контралатерално на тялото', lobe: 'Мозъчен ствол', explanation: 'Синдром на Валенберг (латерален мозъчно-стволов инфаркт) — PICA.' },
+  { question: 'Музикална памет и разпознаване на мелодии', lobe: 'Темпорален дял', explanation: 'Дясната темпорална кора е доминантна за музикална обработка.' },
+  { question: 'Лунатизъм и агресия при увреда на тази структура', lobe: 'Фронтален дял', explanation: 'Орбитофронталната кора регулира импулс-контрол и поведение.' },
+  { question: 'Кортикобулбарни и кортикоспинални пътища преминават оттук', lobe: 'Мозъчен ствол', explanation: 'Пирамидите на медулата съдържат низходящите моторни пътища.' },
+  { question: 'Цветно зрение и зрителна пространствена обработка', lobe: 'Окципитален дял', explanation: 'Зрителните асоциативни зони V2–V5 са в окципиталния и части от теменния дял.' },
+  { question: 'Алексия и аграфия (четене и писане)', lobe: 'Париетален дял', explanation: 'Ъгловият гирус (angular gyrus) в долния париетален лобул медиира грамотността.' },
+  { question: 'Хемиплегия след инсулт на вътрешна капсула', lobe: 'Фронтален дял', explanation: 'Кортикоспиналните влакна от моторната кора пресичат в пирамидите и засягат контралатерални крайници.' },
+  { question: 'Слухова халюцинация при епилепсия', lobe: 'Темпорален дял', explanation: 'Темпорален епилептичен фокус може да дава слухови или обонятелни халюцинации.' },
+  { question: 'Интенционен тремор (по-силен в края на движение)', lobe: 'Малък мозък', explanation: 'Дисметрията и интенционният тремор са класически церебеларни знаци.' },
+  { question: 'Окомоторни нарушения: диплопия и нистагъм при увреда', lobe: 'Мозъчен ствол', explanation: 'Ядрата на ЧН III, IV и VI са в мозъчния ствол.' },
+];
+
+function BrainLobeIdentifier({ onBack }: { onBack: () => void }) {
+  const { t } = useTheme();
+  const { updateXP } = useAuth();
+  const [phase, setPhase] = useState<'idle' | 'countdown' | 'playing' | 'done'>('idle');
+  const [countdown, setCountdown] = useState(3);
+  const [pool, setPool] = useState<BrainLobeQuestion[]>([]);
+  const [current, setCurrent] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(45);
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [correct, setCorrect] = useState(0);
+  const [feedback, setFeedback] = useState<{ ok: boolean; answer: string; explanation: string } | null>(null);
+  const [qKey, setQKey] = useState(0);
+  const [confetti, setConfetti] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const TOTAL = 20;
+
+  useEffect(() => {
+    if (phase === 'countdown' && countdown > 0) {
+      const id = setTimeout(() => setCountdown(c => c - 1), 1000);
+      return () => clearTimeout(id);
+    }
+    if (phase === 'countdown' && countdown === 0) setPhase('playing');
+  }, [phase, countdown]);
+
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    if (timeLeft <= 0) {
+      const wasCorrect = feedback?.ok;
+      setPhase('done');
+      updateXP((correct + (wasCorrect ? 1 : 0)) * 10);
+      return;
+    }
+    const id = setTimeout(() => setTimeLeft(x => x - 1), 1000);
+    return () => clearTimeout(id);
+  });
+
+  const start = () => {
+    const q = shuffle([...BRAIN_LOBE_QUESTIONS]).slice(0, TOTAL);
+    setPool(q);
+    setCurrent(0);
+    setTimeLeft(45);
+    setScore(0);
+    setStreak(0);
+    setBestStreak(0);
+    setCorrect(0);
+    setFeedback(null);
+    setQKey(0);
+    setConfetti(false);
+    setPhase('countdown');
+    setCountdown(3);
+  };
+
+  const handleAnswer = useCallback((lobe: string) => {
+    if (phase !== 'playing' || feedback) return;
+    const q = pool[current];
+    const isCorrect = lobe === q.lobe;
+    setFeedback({ ok: isCorrect, answer: q.lobe, explanation: q.explanation });
+    if (isCorrect) {
+      const ns = streak + 1;
+      const pts = 10 * (ns >= 3 ? 2 : 1);
+      setScore(s => s + pts);
+      setCorrect(c => c + 1);
+      setStreak(ns);
+      setBestStreak(bs => Math.max(bs, ns));
+    } else {
+      setStreak(0);
+    }
+
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      setFeedback(null);
+      setQKey(k => k + 1);
+      setTimeLeft(45);
+      if (current + 1 >= pool.length) {
+        setPhase('done');
+        setConfetti(true);
+        updateXP(correct * 10 + (isCorrect ? 10 : 0));
+      } else {
+        setCurrent(c => c + 1);
+      }
+    }, 1500);
+  }, [phase, feedback, pool, current, streak, correct]);
+
+  if (phase === 'idle' || phase === 'done') {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-8">
+        {confetti && <Confetti />}
+        <GameStyles />
+        <button onClick={onBack} className={`text-sm mb-6 ${t.textMuted}`}>← Обратно</button>
+        <div className={`rounded-3xl p-8 text-center ${t.card} anim-slide-up`}>
+          <div className="text-6xl mb-4">🧠</div>
+          <h2 className={`text-3xl font-black mb-2 ${t.heading}`}>Мозъчни Дялове</h2>
+          <p className={`${t.textMuted} mb-6`}>20 въпроса · 45 сек на въпрос. Прочети функцията и познай кой мозъчен дял/структура е отговорна!</p>
+          {phase === 'done' && (
+            <div className="mb-6 space-y-2">
+              <div className={`text-5xl font-black bg-gradient-to-r ${t.xpBar} bg-clip-text text-transparent anim-pop`}>{correct}/{TOTAL}</div>
+              <div className={`text-sm ${t.textMuted}`}>правилни · Серия: {bestStreak} · Точки: {score}</div>
+              <div className={`text-sm font-bold ${t.primaryText}`}>+{correct * 10} XP спечелени</div>
+            </div>
+          )}
+          <button onClick={start} className={`w-full py-4 rounded-2xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 ${t.primary} shadow-lg`}>
+            {phase === 'done' ? '🔄 Играй отново' : '🧠 Старт!'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === 'countdown') {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        <GameStyles />
+        <div key={countdown} className={`text-9xl font-black anim-pop ${t.heading}`}>{countdown || '🧠'}</div>
+      </div>
+    );
+  }
+
+  const q = pool[current];
+
+  return (
+    <div className="max-w-lg mx-auto px-4 py-6">
+      <GameStyles />
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex gap-3 items-center">
+          <span className={`font-black text-xl ${t.heading}`}>⚡{score}</span>
+          {streak >= 3 && <span className="text-orange-400 font-bold text-sm anim-pop">🔥×{streak}</span>}
+        </div>
+        <span className={`text-sm font-bold ${t.textMuted}`}>{current + 1}/{TOTAL}</span>
+        <span className={`text-2xl font-black tabular-nums ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : t.primaryText}`}>
+          {timeLeft}s
+        </span>
+      </div>
+
+      <div className={`h-2 rounded-full mb-5 ${t.progressBg}`}>
+        <div className={`h-2 rounded-full transition-all duration-1000 ${timeLeft <= 10 ? 'bg-red-500' : 'bg-gradient-to-r from-violet-500 to-fuchsia-600'}`}
+          style={{ width: `${(timeLeft / 45) * 100}%` }} />
+      </div>
+
+      <div key={`q-${qKey}`}
+        className={`rounded-3xl p-6 mb-5 anim-slide-up min-h-[110px] flex flex-col justify-center ${feedback ? (feedback.ok ? t.correct : t.wrong) : t.card}`}>
+        <div className={`text-xs font-bold uppercase tracking-wider mb-2 ${t.textMuted}`}>Кой мозъчен дял/структура?</div>
+        <p className={`text-lg font-bold leading-relaxed ${t.heading}`}>{q.question}</p>
+      </div>
+
+      {feedback && (
+        <div className={`rounded-2xl px-4 py-3 mb-4 text-sm anim-slide-up ${feedback.ok ? t.correct : t.wrong}`}>
+          <div className="font-black mb-1">{feedback.ok ? `✅ ${feedback.answer}!` : `❌ Правилно: ${feedback.answer}`}</div>
+          <div className={t.text}>{feedback.explanation}</div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        {BRAIN_LOBE_OPTIONS.map((lobe, i) => (
+          <button key={lobe} onClick={() => handleAnswer(lobe)} disabled={!!feedback}
+            className={`p-3 rounded-xl text-sm font-bold transition-all active:scale-95 hover:scale-[1.02] border-2 anim-slide-up ${
+              feedback && lobe === q.lobe ? 'bg-green-500 text-white border-green-400 scale-105' :
+              feedback && lobe !== q.lobe ? `${t.card} ${t.text} border-transparent opacity-40` :
+              `${t.card} ${t.text} border-transparent ${t.cardHover}`
+            }`}
+            style={{ animationDelay: `${i * 0.04}s` }}>
+            {lobe}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── NEUROTRANSMITTER PATHS ───────────────────────────────────────────────────
+interface NTPair {
+  nt: string;
+  role: string;
+  region: string;
+  receptor: string;
+  deficit: string;
+  emoji: string;
+}
+
+const NT_PAIRS: NTPair[] = [
+  { nt: 'Допамин',       role: 'Награда / мотивация', region: 'Стриатум',                  receptor: 'D1/D2 рецептори',         deficit: 'Дефицит → Паркинсон',            emoji: '🎯' },
+  { nt: 'Серотонин',     role: 'Настроение / сън',    region: 'Рафеови ядра',               receptor: '5-HT рецептори',           deficit: 'Дефицит → депресия',             emoji: '😊' },
+  { nt: 'ГАМК',          role: 'Инхибиция',           region: 'Широко в ЦНС',              receptor: 'GABA-A / GABA-B',          deficit: 'Дефицит → епилепсия',            emoji: '🔵' },
+  { nt: 'Глутамат',      role: 'Възбуждане',          region: 'Широко в ЦНС',              receptor: 'NMDA / AMPA',              deficit: 'Излишък → ексайтотоксичност',     emoji: '⚡' },
+  { nt: 'Ацетилхолин',   role: 'Памет / моторика',   region: 'Базални ганглии',            receptor: 'Никотинови / Мускаринови', deficit: 'Дефицит → Алцхаймер',            emoji: '🧠' },
+  { nt: 'Норадреналин',  role: 'Бдителност',          region: 'Locus coeruleus',            receptor: 'α / β адренорецептори',    deficit: 'Дефицит → депресия / ADHD',      emoji: '👁' },
+  { nt: 'Ендорфини',     role: 'Болкоуспокояване',   region: 'Широко в ЦНС',              receptor: 'Опиоидни μ рецептори',     deficit: 'Блокирани от налоксон',          emoji: '😴' },
+  { nt: 'Хистамин',      role: 'Бдителност / будност',region: 'Tuberomammillary nucleus',  receptor: 'H1 / H2 рецептори',        deficit: 'Блокиране → сънливост',          emoji: '⏰' },
+  { nt: 'Окситоцин',     role: 'Социална свързаност', region: 'Хипоталамус',               receptor: 'Окситоцинови рецептори',   deficit: 'Роля в доверие / привързаност',  emoji: '❤️' },
+  { nt: 'Мелатонин',     role: 'Циркаден ритъм',     region: 'Епифиза',                   receptor: 'Мелатонинови рецептори',   deficit: 'Регулира сън / събуждане',       emoji: '🌙' },
+];
+
+function NeurotransmitterGame({ onBack }: { onBack: () => void }) {
+  const { t } = useTheme();
+  const { updateXP } = useAuth();
+  const [phase, setPhase] = useState<'idle' | 'playing' | 'done'>('idle');
+  const [pairs, setPairs] = useState<NTPair[]>([]);
+  const [nts, setNts] = useState<string[]>([]);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [selectedNt, setSelectedNt] = useState<string | null>(null);
+  const [matched, setMatched] = useState<string[]>([]);
+  const [wrong, setWrong] = useState<string | null>(null);
+  const [moves, setMoves] = useState(0);
+  const [score, setScore] = useState(0);
+  const [confetti, setConfetti] = useState(false);
+  const [lastInfo, setLastInfo] = useState<NTPair | null>(null);
+
+  const start = () => {
+    const sel = shuffle(NT_PAIRS).slice(0, 6);
+    setPairs(sel);
+    setNts(shuffle(sel.map(p => p.nt)));
+    setRoles(shuffle(sel.map(p => p.role)));
+    setMatched([]); setSelectedNt(null); setWrong(null);
+    setMoves(0); setScore(0); setConfetti(false); setLastInfo(null);
+    setPhase('playing');
+  };
+
+  const handleRole = (role: string) => {
+    if (!selectedNt || matched.includes(selectedNt)) return;
+    setMoves(m => m + 1);
+    const pair = pairs.find(p => p.nt === selectedNt);
+    if (pair?.role === role) {
+      const nm = [...matched, selectedNt];
+      setMatched(nm);
+      setScore(s => s + Math.max(1, 5 - Math.floor(moves / 3)));
+      setLastInfo(pair);
+      setSelectedNt(null);
+      if (nm.length === pairs.length) { setPhase('done'); setConfetti(true); updateXP(score * 5 + 40); }
+    } else {
+      setWrong(role);
+      setTimeout(() => { setWrong(null); setSelectedNt(null); }, 700);
+    }
+  };
+
+  if (phase !== 'playing') return (
+    <div className="max-w-lg mx-auto px-4 py-8">
+      {confetti && <Confetti />}
+      <GameStyles />
+      <button onClick={onBack} className={`text-sm mb-6 ${t.textMuted}`}>← Обратно</button>
+      <div className={`rounded-3xl p-8 text-center ${t.card} anim-slide-up`}>
+        <div className="text-6xl mb-4">🧠</div>
+        <h2 className={`text-3xl font-black mb-2 ${t.heading}`}>Невротрансмитерни Пътища</h2>
+        <p className={`${t.textMuted} mb-6`}>Свържи всеки невротрансмитер с неговата основна роля. 6 двойки на игра.</p>
+        {phase === 'done' && (
+          <div className="mb-6 space-y-1">
+            <div className="text-3xl font-black text-green-500 anim-pop">🎉 Завърши!</div>
+            <div className={`text-sm ${t.textMuted}`}>{moves} хода · {score} точки</div>
+          </div>
+        )}
+        <button onClick={start} className={`w-full py-4 rounded-2xl font-bold text-white text-lg hover:scale-105 transition-all ${t.primary}`}>
+          {phase === 'done' ? '🔄 Нова игра' : '🧠 Стартирай'}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-4">
+      <GameStyles />
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={onBack} className={`text-sm ${t.textMuted}`}>← Обратно</button>
+        <span className={`text-xs font-bold ${t.textMuted}`}>{matched.length}/{pairs.length} · {moves} хода</span>
+      </div>
+
+      {lastInfo && (
+        <div className="mb-3 px-4 py-3 rounded-2xl bg-violet-50 border border-violet-200 dark:bg-violet-900/20 dark:border-violet-800 anim-slide-up">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xl">{lastInfo.emoji}</span>
+            <span className="font-black text-violet-700 dark:text-violet-300 text-sm">{lastInfo.nt}</span>
+          </div>
+          <div className="text-xs text-violet-600 dark:text-violet-400 space-y-0.5">
+            <div>📍 <b>Регион:</b> {lastInfo.region}</div>
+            <div>🔗 <b>Рецептор:</b> {lastInfo.receptor}</div>
+            <div>⚠️ {lastInfo.deficit}</div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <div className={`text-xs font-bold uppercase tracking-wider mb-2 ${t.textMuted}`}>Невротрансмитер</div>
+          {nts.map(nt => {
+            const pair = pairs.find(p => p.nt === nt);
+            const isMatched = matched.includes(nt);
+            const isSelected = selectedNt === nt;
+            return (
+              <button key={nt} onClick={() => !isMatched && setSelectedNt(nt)} disabled={isMatched}
+                className={`w-full p-3 rounded-xl text-sm font-semibold text-left transition-all border-2 anim-slide-up flex items-center gap-2 ${
+                  isMatched ? `${t.correct} opacity-60` :
+                  isSelected ? `${t.primary} text-white border-transparent scale-105` :
+                  `${t.card} ${t.text} border-transparent ${t.cardHover}`
+                }`}>
+                <span>{pair?.emoji}</span>
+                <span>{nt}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="space-y-2">
+          <div className={`text-xs font-bold uppercase tracking-wider mb-2 ${t.textMuted}`}>Основна роля</div>
+          {roles.map(role => {
+            const matchedNt = pairs.find(p => p.role === role)?.nt;
+            const isMatched = matchedNt ? matched.includes(matchedNt) : false;
+            const isWrong = wrong === role;
+            return (
+              <button key={role} onClick={() => handleRole(role)} disabled={isMatched || !selectedNt}
+                className={`w-full p-3 rounded-xl text-sm font-semibold text-left transition-all border-2 anim-slide-up ${
+                  isMatched ? `${t.correct} opacity-60` :
+                  isWrong ? `${t.wrong} anim-shake` :
+                  selectedNt ? `${t.card} ${t.text} border-transparent hover:scale-[1.02] ${t.cardHover}` :
+                  `${t.card} ${t.text} border-transparent opacity-50`
+                }`}>
+                {role}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── NEURAL PATHWAY TRACER ────────────────────────────────────────────────────
+interface PathwayQuestion {
+  scenario: string;
+  options: string[];
+  correct: string;
+  explanation: string;
+}
+
+const PATHWAY_QUESTIONS: PathwayQuestion[] = [
+  {
+    scenario: 'Пациент има слабост на десния крак и ръка след инсулт в лявата мозъчна хемисфера. Кой тракт е засегнат?',
+    options: ['Десен кортикоспинален тракт', 'Ляв кортикоспинален тракт', 'Спиноталамичен тракт', 'Дорзални колони'],
+    correct: 'Ляв кортикоспинален тракт',
+    explanation: 'Пирамидалните влакна декусират в медулата — ляв кортикоспинален тракт контролира десните крайници.',
+  },
+  {
+    scenario: 'Загуба на болка и температура вдясно на тялото + слабост вляво. Кой синдром?',
+    options: ['Синдром на Браун-Секар', 'Синдром на Валенберг', 'Централен мозъчен синдром', 'Таламичен синдром'],
+    correct: 'Синдром на Браун-Секар',
+    explanation: 'Браун-Секар: хемисекция на гръбначен мозък — ипсилатерална слабост + контралатерална загуба на болка/температура.',
+  },
+  {
+    scenario: 'Атаксия при ходене, нистагъм и дизартрия. Кой е засегнат?',
+    options: ['Малък мозък', 'Базални ганглии', 'Таламус', 'Фронтален дял'],
+    correct: 'Малък мозък',
+    explanation: 'Класическата церебеларна триада: атаксия, нистагъм, интенционен тремор и дизартрия.',
+  },
+  {
+    scenario: 'Пациент губи усещане за допир и проприоцепция в левия крак. Кой е засегнат?',
+    options: ['Ляв дорзален сноп (Гол и Бурдах)', 'Десен дорзален сноп (Гол и Бурдах)', 'Ляв спиноталамичен тракт', 'Десен кортикоспинален тракт'],
+    correct: 'Ляв дорзален сноп (Гол и Бурдах)',
+    explanation: 'Дорзалните снопове пренасят проприоцепция и фин допир ипсилатерално до медулата, след което декусират.',
+  },
+  {
+    scenario: 'Пациент с ригидност, тремор в покой и брадикинезия. Кой невронален тракт/верига е засегнат?',
+    options: ['Нигростриатален допаминов път', 'Кортикоспинален тракт', 'Спиноцеребеларен тракт', 'Вестибулоспинален тракт'],
+    correct: 'Нигростриатален допаминов път',
+    explanation: 'Паркинсон е резултат от дегенерация на допаминергичните неврони в substantia nigra → стриатум.',
+  },
+  {
+    scenario: 'Остра загуба на зрение в едното око + спастична парапареза на краката. Кой е засегнат?',
+    options: ['Множествена склероза (зрителен нерв + гръбначен мозък)', 'Таламичен инсулт', 'Синдром на Браун-Секар', 'Латерален медуларен синдром'],
+    correct: 'Множествена склероза (зрителен нерв + гръбначен мозък)',
+    explanation: 'Неврит на зрителния нерв + спинална демиелинизация е класическа презентация на МС (увреда разделена в пространство и времe).',
+  },
+  {
+    scenario: '"Заключен синдром" (locked-in): тетраплегия, запазено вертикално движение на очите. Кое ниво е засегнато?',
+    options: ['Вентрален мост', 'Медула', 'Среден мозък', 'С1 гръбначен мозък'],
+    correct: 'Вентрален мост',
+    explanation: 'Двустранна лезия на вентралния мост унищожава кортикоспинални и кортикобулбарни пътища, спестявайки ARAS и вертикалния поглед.',
+  },
+  {
+    scenario: 'Зрителна загуба в горния десен квадрант (горна дясна квадрантанопсия). Кое е засегнато?',
+    options: ['Ляв темпорален радиаций', 'Ляв париетален радиаций', 'Дясна зрителна кора', 'Оптична хиазма'],
+    correct: 'Ляв темпорален радиаций',
+    explanation: 'Зрителните лъчения от долната ретина (горен зрителен квадрант) минават през темпоралния дял (пътека на Мейер).',
+  },
+  {
+    scenario: 'Двустранна загуба на темпоралните полузрителни полета (битемпорална хемианопсия). Кое е засегнато?',
+    options: ['Оптична хиазма (средата)', 'Лява зрителна кора', 'Оптичен тракт', 'Зрителни лъчения'],
+    correct: 'Оптична хиазма (средата)',
+    explanation: 'Кръстосването на назалните влакна в хиазмата е засегнато — класически знак за хипофизен аденом.',
+  },
+  {
+    scenario: 'Неспособност за формиране на нова дългосрочна памет при запазена работна памет. Кое е засегнато?',
+    options: ['Хипокамп (двустранно)', 'Амигдала', 'Префронтална кора', 'Таламус'],
+    correct: 'Хипокамп (двустранно)',
+    explanation: 'Двустранно увреждане на хипокампа причинява антероградна амнезия (случай H.M. е класическият пример).',
+  },
+  {
+    scenario: 'Пациент не може да произведе реч, разбира я добре. Зона/регион засегнат?',
+    options: ['Зона на Брока (фронтален дял)', 'Зона на Вернике (темпорален дял)', 'Arcuate fasciculus', 'Угловият гирус'],
+    correct: 'Зона на Брока (фронтален дял)',
+    explanation: 'Брокова афазия: не-флуентна реч с добро разбиране — лезия в долния фронтален гирус на доминантната хемисфера.',
+  },
+  {
+    scenario: 'Пациент говори флуентно, но не разбира реч (несмислена реч). Кое е засегнато?',
+    options: ['Зона на Вернике (темпорален дял)', 'Зона на Брока', 'Фронтален дял', 'Arcuate fasciculus'],
+    correct: 'Зона на Вернике (темпорален дял)',
+    explanation: 'Вернике афазия: флуентна, но несмислена реч (неологизми) с лошо разбиране — задна горна темпорална кора.',
+  },
+  {
+    scenario: 'Пациентът повтаря думи перфектно, но не може да назове предмети, не разбира. Кое е засегнато?',
+    options: ['Arcuate fasciculus', 'Зона на Вернике', 'Зона на Брока', 'Хипокамп'],
+    correct: 'Arcuate fasciculus',
+    explanation: 'Проводникова афазия: нарушено повтаряне при запазено разбиране и флуентна реч — увреда на arcuate fasciculus.',
+  },
+  {
+    scenario: 'Интенционен тремор (тремор нараства при приближаване към цел), дисметрия. Кое е засегнато?',
+    options: ['Зъбчато ядро на малкия мозък', 'Базални ганглии', 'Substantia nigra', 'Лентикуларно ядро'],
+    correct: 'Зъбчато ядро на малкия мозък',
+    explanation: 'Дентаталното ядро (nucleus dentatus) е изходното ядро на малкия мозък и медиира финото коригиране на движенията.',
+  },
+  {
+    scenario: 'Хореиформени движения и деменция при млад пациент с фамилна история. Кой е засегнат?',
+    options: ['Стриатум (каудатно ядро)', 'Малък мозък', 'Кортикоспинален тракт', 'Хипокамп'],
+    correct: 'Стриатум (каудатно ядро)',
+    explanation: 'Болест на Хънтингтън: загуба на ГАМК-ергични неврони в каудатното ядро и путамен → хорея.',
+  },
+  {
+    scenario: 'Рефлексна дъга: лезия на алфа-мотоневрон (долен мотоневрон). Какво очакваме?',
+    options: ['Вяла парализа, хипотония, фасцикулации, арефлексия', 'Спастична парализа, хиперрефлексия, Бабински (+)', 'Хорея и ригидност', 'Атаксия и нистагъм'],
+    correct: 'Вяла парализа, хипотония, фасцикулации, арефлексия',
+    explanation: 'ДМН увреда дава вяла парализа (LMN признаци) — обратното на горния моторен неврон (UMN).',
+  },
+  {
+    scenario: 'Увреда на горния мотоневрон (UMN). Какъв тип парализа и рефлекси?',
+    options: ['Спастична парализа, хиперрефлексия, симптом на Бабински (+)', 'Вяла парализа, хипотония, фасцикулации', 'Тремор в покой, ригидност', 'Атаксия, интенционен тремор'],
+    correct: 'Спастична парализа, хиперрефлексия, симптом на Бабински (+)',
+    explanation: 'UMN увреда освобождава рефлекторната дъга от кортикална инхибиция → спазъм, хиперрефлексия, (+) Бабински.',
+  },
+  {
+    scenario: 'Пациент след инсулт на таламуса: постоянна нетърпима болка в контралатералната половина. Кой синдром?',
+    options: ['Таламичен болков синдром (Дежерин-Руси)', 'Синдром на Браун-Секар', 'Централен болков синдром от медула', 'Синдром на Валенберг'],
+    correct: 'Таламичен болков синдром (Дежерин-Руси)',
+    explanation: 'Таламичен инсулт може да причини централна постинсултна болка (Дежерин-Руси) — тежка, дифузна, трудна за лечение.',
+  },
+  {
+    scenario: 'Синдром на Хорнер: птоза, миоза, анхидроза. Кой е засегнат?',
+    options: ['Симпатикусов път (от хипоталамус → гръбначен мозък → горен цервикален ганглий)', 'Зрителен нерв', 'Окулемоторен нерв (III)', 'Вестибулокохлеарен нерв (VIII)'],
+    correct: 'Симпатикусов път (от хипоталамус → гръбначен мозък → горен цервикален ганглий)',
+    explanation: 'Хорнер синдром: прекъсване на симпатиковия тригенон (хипоталамус → Т1 → горен ганглий → очни симпатикови влакна).',
+  },
+  {
+    scenario: 'Загуба на болка и температура в дерматомите на тялото (двустранно), запазена проприоцепция. Кое е засегнато?',
+    options: ['Антериорна комисура (спиноталамичните кръстове)', 'Дорзални снопове', 'Кортикоспинален тракт', 'Вестибулоспинален тракт'],
+    correct: 'Антериорна комисура (спиноталамичните кръстове)',
+    explanation: 'При сирингомиелия централната кухина в гръбначния мозък засяга антериорната комисура — загуба на болка/температура, запазен допир.',
+  },
+  {
+    scenario: 'Пациент след падане: слабост и нарушена чувствителност двустранно под нивото на лезията, задни мускули на врата болни. Ниво?',
+    options: ['Пълна напречна лезия на гръбначния мозък', 'Синдром на Браун-Секар', 'Централен мозъчен синдром', 'Ядрена офталмоплегия'],
+    correct: 'Пълна напречна лезия на гръбначния мозък',
+    explanation: 'Пълна напречна лезия: загуба на всички функции (моторни, сетивни, автономни) под нивото на увредата.',
+  },
+  {
+    scenario: 'Пациент с диплопия при поглед вляво: дясното око не се движи навън. Кой черепен нерв?',
+    options: ['Десен абдуцентен нерв (VI)', 'Десен окулемоторен нерв (III)', 'Ляв трохлеарен нерв (IV)', 'Ляв абдуцентен нерв (VI)'],
+    correct: 'Десен абдуцентен нерв (VI)',
+    explanation: 'ЧН VI инервира m. rectus lateralis — пареза дава неспособност за абдукция (поглед навън).',
+  },
+  {
+    scenario: 'Пациент не може да затвори очи, усмивката е асиметрична (двата дяла на лицето засегнати). Кой нерв?',
+    options: ['Лицев нерв (VII) — централна пареза', 'Лицев нерв (VII) — периферна пареза', 'Тригеминален нерв (V)', 'Окулемоторен нерв (III)'],
+    correct: 'Лицев нерв (VII) — периферна пареза',
+    explanation: 'Периферна VII пареза (Бел паралич) засяга целия ипсилатерален хемифас (вкл. чело). Централна засяга само долната половина.',
+  },
+  {
+    scenario: 'Пресинаптичен аксон е прерязан. Какво се случва с постсинаптичния неврон?',
+    options: ['Денервационна свръхчувствителност (up-regulation на рецептори)', 'Атрофия и загуба на рецептори', 'Няма промяна', 'Аксонална регенерация'],
+    correct: 'Денервационна свръхчувствителност (up-regulation на рецептори)',
+    explanation: 'При денервация постсинаптичната мембрана прави up-regulation на рецепторите, което я прави свръхчувствителна към малки количества НТ.',
+  },
+  {
+    scenario: 'Антероградна (Валерова) дегенерация след аксотомия: в кой сегмент?',
+    options: ['Дисталният аксон (от лезията към терминала)', 'Проксималният аксон (от лезията към тялото)', 'Клетъчното тяло', 'Дендритите'],
+    correct: 'Дисталният аксон (от лезията към терминала)',
+    explanation: 'Валерова дегенерация: дисталният аксон дегенерира (без транспорт от клетъчното тяло). Проксималното се регенерира по-лесно.',
+  },
+];
+
+function BrainPathsGame({ onBack }: { onBack: () => void }) {
+  const { t } = useTheme();
+  const { updateXP } = useAuth();
+  const [phase, setPhase] = useState<'idle' | 'countdown' | 'playing' | 'done'>('idle');
+  const [countdown, setCountdown] = useState(3);
+  const [pool, setPool] = useState<PathwayQuestion[]>([]);
+  const [current, setCurrent] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [correct, setCorrect] = useState(0);
+  const [feedback, setFeedback] = useState<{ ok: boolean; answer: string; explanation: string } | null>(null);
+  const [qKey, setQKey] = useState(0);
+  const [confetti, setConfetti] = useState(false);
+  const [optionsOrder, setOptionsOrder] = useState<string[]>([]);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const TOTAL = 15;
+
+  useEffect(() => {
+    if (phase === 'countdown' && countdown > 0) {
+      const id = setTimeout(() => setCountdown(c => c - 1), 1000);
+      return () => clearTimeout(id);
+    }
+    if (phase === 'countdown' && countdown === 0) setPhase('playing');
+  }, [phase, countdown]);
+
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    if (timeLeft <= 0) {
+      setFeedback({ ok: false, answer: pool[current]?.correct ?? '', explanation: pool[current]?.explanation ?? '' });
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        setFeedback(null);
+        setQKey(k => k + 1);
+        if (current + 1 >= pool.length) {
+          setPhase('done');
+          updateXP(correct * 15 + (streak >= 5 ? 25 : 0));
+        } else {
+          setCurrent(c => c + 1);
+          setTimeLeft(60);
+        }
+      }, 1500);
+      return;
+    }
+    const id = setTimeout(() => setTimeLeft(x => x - 1), 1000);
+    return () => clearTimeout(id);
+  });
+
+  const start = () => {
+    const q = shuffle([...PATHWAY_QUESTIONS]).slice(0, TOTAL);
+    setPool(q);
+    setCurrent(0);
+    setTimeLeft(60);
+    setScore(0);
+    setStreak(0);
+    setBestStreak(0);
+    setCorrect(0);
+    setFeedback(null);
+    setQKey(0);
+    setConfetti(false);
+    setOptionsOrder(shuffle(q[0].options));
+    setPhase('countdown');
+    setCountdown(3);
+  };
+
+  const handleAnswer = useCallback((answer: string) => {
+    if (phase !== 'playing' || feedback) return;
+    const q = pool[current];
+    const isCorrect = answer === q.correct;
+    setFeedback({ ok: isCorrect, answer: q.correct, explanation: q.explanation });
+    if (isCorrect) {
+      const ns = streak + 1;
+      const pts = 15 * (ns >= 3 ? 2 : 1);
+      setScore(s => s + pts);
+      setCorrect(c => c + 1);
+      setStreak(ns);
+      setBestStreak(bs => Math.max(bs, ns));
+    } else {
+      setStreak(0);
+    }
+
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      setFeedback(null);
+      setQKey(k => k + 1);
+      if (current + 1 >= pool.length) {
+        setPhase('done');
+        setConfetti(isCorrect && correct >= TOTAL - 3);
+        updateXP(correct * 15 + (isCorrect ? 15 : 0) + (streak >= 5 ? 25 : 0));
+      } else {
+        const nextQ = pool[current + 1];
+        setOptionsOrder(shuffle(nextQ.options));
+        setCurrent(c => c + 1);
+        setTimeLeft(60);
+      }
+    }, 2000);
+  }, [phase, feedback, pool, current, streak, correct]);
+
+  if (phase === 'idle' || phase === 'done') {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-8">
+        {confetti && <Confetti />}
+        <GameStyles />
+        <button onClick={onBack} className={`text-sm mb-6 ${t.textMuted}`}>← Обратно</button>
+        <div className={`rounded-3xl p-8 text-center ${t.card} anim-slide-up`}>
+          <div className="text-6xl mb-4">🧠</div>
+          <h2 className={`text-3xl font-black mb-2 ${t.heading}`}>Невронни Пътища</h2>
+          <p className={`${t.textMuted} mb-6`}>
+            {TOTAL} клинични сценария. Идентифицирай засегнатия неврологичен път или структура.
+            {' '}60 сек на въпрос · +15 XP на правилен отговор · трудност: ⭐⭐⭐
+          </p>
+          {phase === 'done' && (
+            <div className="mb-6 space-y-2">
+              <div className={`text-5xl font-black bg-gradient-to-r ${t.xpBar} bg-clip-text text-transparent anim-pop`}>{correct}/{TOTAL}</div>
+              <div className={`text-sm ${t.textMuted}`}>правилни · Серия: {bestStreak} · Точки: {score}</div>
+              <div className={`text-sm font-bold ${t.primaryText}`}>+{correct * 15} XP спечелени</div>
+            </div>
+          )}
+          <button onClick={start} className={`w-full py-4 rounded-2xl font-bold text-white text-lg transition-all hover:scale-105 active:scale-95 ${t.primary} shadow-lg`}>
+            {phase === 'done' ? '🔄 Играй отново' : '🧠 Старт!'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === 'countdown') {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        <GameStyles />
+        <div key={countdown} className={`text-9xl font-black anim-pop ${t.heading}`}>{countdown || '🧠'}</div>
+      </div>
+    );
+  }
+
+  const q = pool[current];
+
+  return (
+    <div className="max-w-lg mx-auto px-4 py-6">
+      <GameStyles />
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex gap-3 items-center">
+          <span className={`font-black text-xl ${t.heading}`}>⚡{score}</span>
+          {streak >= 3 && <span className="text-orange-400 font-bold text-sm anim-pop">🔥×{streak}</span>}
+        </div>
+        <span className={`text-sm font-bold ${t.textMuted}`}>{current + 1}/{TOTAL}</span>
+        <span className={`text-2xl font-black tabular-nums ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : t.primaryText}`}>
+          {timeLeft}s
+        </span>
+      </div>
+
+      <div className={`h-2 rounded-full mb-5 ${t.progressBg}`}>
+        <div className={`h-2 rounded-full transition-all duration-1000 ${timeLeft <= 10 ? 'bg-red-500' : 'bg-gradient-to-r from-violet-600 to-indigo-600'}`}
+          style={{ width: `${(timeLeft / 60) * 100}%` }} />
+      </div>
+
+      <div key={`q-${qKey}`}
+        className={`rounded-3xl p-6 mb-5 anim-slide-up ${feedback ? (feedback.ok ? t.correct : t.wrong) : t.card}`}>
+        <div className={`text-xs font-bold uppercase tracking-wider mb-2 text-violet-500`}>Клиничен сценарий</div>
+        <p className={`text-base font-bold leading-relaxed ${t.heading}`}>{q.scenario}</p>
+      </div>
+
+      {feedback && (
+        <div className={`rounded-2xl px-4 py-3 mb-4 text-sm anim-slide-up ${feedback.ok ? t.correct : t.wrong}`}>
+          <div className="font-black mb-1">{feedback.ok ? `✅ Правилно!` : `❌ Правилно: ${feedback.answer}`}</div>
+          <div className={`${t.text} leading-relaxed`}>{feedback.explanation}</div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {(feedback ? q.options : optionsOrder).map((opt, i) => (
+          <button key={opt} onClick={() => handleAnswer(opt)} disabled={!!feedback}
+            className={`w-full p-4 rounded-2xl font-semibold text-sm text-left transition-all active:scale-[0.98] hover:scale-[1.01] border-2 anim-slide-up ${
+              feedback && opt === q.correct ? 'bg-green-500 text-white border-green-400 scale-[1.01]' :
+              feedback && opt !== q.correct ? `${t.card} ${t.text} border-transparent opacity-40` :
+              `${t.card} ${t.text} border-transparent ${t.cardHover}`
+            }`}
+            style={{ animationDelay: `${i * 0.04}s` }}>
+            <span className={`block text-xs mb-1 font-black text-violet-500`}>{String.fromCharCode(65 + i)}</span>
+            {opt}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── GAMES MENU ───────────────────────────────────────────────────────────────
 type GameCategory = 'all' | 'classic' | 'lab' | 'new';
 
@@ -2214,9 +3312,14 @@ const GAME_LIST: GameEntry[] = [
   { id: 'dna',       title: 'ДНК Строител',            desc: 'Комплементарни бази · A↔T · G↔C',           emoji: '🧬',  gradient: 'from-pink-500 to-rose-600',     xp: 'до 32',   stars: 2, category: 'lab' },
   { id: 'balancer',  title: 'Балансирай уравнение',    desc: '6 химични уравнения · коефициенти',         emoji: '⚗️',  gradient: 'from-indigo-500 to-purple-600', xp: 'до 90',   stars: 3, category: 'lab' },
   { id: 'organelle', title: 'Клетъчна карта',          desc: 'Намери органелите в SVG клетката',          emoji: '🔬',  gradient: 'from-teal-400 to-emerald-500',  xp: 'до 80',   stars: 2, category: 'lab' },
-  { id: 'drugs',     title: 'Лекарства & Рецептори',  desc: 'Свържи лекарство с механизъм на действие',  emoji: '💊',  gradient: 'from-sky-500 to-blue-700',      xp: 'до 100',  stars: 3, category: 'new', isNew: true },
-  { id: 'immune',    title: 'Имунна отбрана',          desc: 'Поставяй имунни клетки · 3 вълни врагове',  emoji: '🦠',  gradient: 'from-red-500 to-rose-700',      xp: 'до 150',  stars: 3, category: 'new', isNew: true },
-  { id: 'operation', title: 'Операция! 3D',             desc: 'Диагноза + 3D хирургия · кликни раните',   emoji: '🔬',  gradient: 'from-emerald-500 to-teal-700',  xp: 'до 100',  stars: 3, category: 'new', isNew: true },
+  { id: 'drugs',             title: 'Лекарства & Рецептори',    desc: 'Свържи лекарство с механизъм на действие',        emoji: '💊',  gradient: 'from-sky-500 to-blue-700',          xp: 'до 100',  stars: 3, category: 'new', isNew: true },
+  { id: 'immune',            title: 'Имунна отбрана',            desc: 'Поставяй имунни клетки · 3 вълни врагове',        emoji: '🦠',  gradient: 'from-red-500 to-rose-700',          xp: 'до 150',  stars: 3, category: 'new', isNew: true },
+  { id: 'operation',         title: 'Операция! 3D',               desc: 'Диагноза + 3D хирургия · кликни раните',         emoji: '🔬',  gradient: 'from-emerald-500 to-teal-700',      xp: 'до 100',  stars: 3, category: 'new', isNew: true },
+  { id: 'cranial',           title: 'Черепни нерви',              desc: '🧠 60 сек · познай нерв I–XII по функция · серии', emoji: '🧠',  gradient: 'from-violet-500 to-purple-700',     xp: 'до 200',  stars: 2, category: 'new', isNew: true },
+  { id: 'synapse',           title: 'Синапс Билдер',              desc: '🧠 Подреди 8-те стъпки на синаптичното предаване', emoji: '⚡',  gradient: 'from-indigo-500 to-violet-700',     xp: 'до 150',  stars: 2, category: 'new', isNew: true },
+  { id: 'brainlobes',        title: 'Мозъчни Дялове',             desc: '🧠 20 въпроса · функция → кой мозъчен дял?',      emoji: '🧩',  gradient: 'from-fuchsia-500 to-pink-700',      xp: 'до 200',  stars: 2, category: 'new', isNew: true },
+  { id: 'neurotransmitter',  title: 'Невротрансмитери',           desc: '🧠 Свържи НТ с роля · Допамин, ГАМК, Глутамат…',  emoji: '🔗',  gradient: 'from-purple-500 to-indigo-700',     xp: 'до 120',  stars: 3, category: 'new', isNew: true },
+  { id: 'brainpaths',        title: 'Невронни Пътища',            desc: '🧠 15 клинични сценария · познай пътя/структурата', emoji: '🩺',  gradient: 'from-violet-600 to-blue-800',       xp: 'до 225',  stars: 3, category: 'new', isNew: true },
 ];
 
 const CAT_TABS: { id: GameCategory; label: string; emoji: string }[] = [
@@ -2248,9 +3351,14 @@ export default function GamesPage() {
   if (game === 'dna')       return <AppShell><GameStyles /><DNABuilder     onBack={() => setGame('menu')} /></AppShell>;
   if (game === 'balancer')  return <AppShell><GameStyles /><EquationBalancer onBack={() => setGame('menu')} /></AppShell>;
   if (game === 'organelle') return <AppShell><GameStyles /><OrganelleMap   onBack={() => setGame('menu')} /></AppShell>;
-  if (game === 'drugs')     return <AppShell><GameStyles /><DrugReceptorGame onBack={() => setGame('menu')} /></AppShell>;
-  if (game === 'immune')    return <AppShell><GameStyles /><ImmuneDefense  onBack={() => setGame('menu')} /></AppShell>;
-  if (game === 'operation') return <AppShell><GameStyles /><OperationGame  onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'drugs')            return <AppShell><GameStyles /><DrugReceptorGame        onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'immune')           return <AppShell><GameStyles /><ImmuneDefense           onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'operation')        return <AppShell><GameStyles /><OperationGame           onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'cranial')          return <AppShell><GameStyles /><CranialNerveChallenge   onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'synapse')          return <AppShell><GameStyles /><SynapseBuilder          onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'brainlobes')       return <AppShell><GameStyles /><BrainLobeIdentifier     onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'neurotransmitter') return <AppShell><GameStyles /><NeurotransmitterGame    onBack={() => setGame('menu')} /></AppShell>;
+  if (game === 'brainpaths')       return <AppShell><GameStyles /><BrainPathsGame          onBack={() => setGame('menu')} /></AppShell>;
 
   const visible = cat === 'all' ? GAME_LIST : GAME_LIST.filter(g => g.category === cat);
   const newCount = GAME_LIST.filter(g => g.isNew).length;

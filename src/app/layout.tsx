@@ -4,6 +4,7 @@ import './globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { CurriculumProvider } from '@/context/CurriculumContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'] });
 
@@ -59,9 +60,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${inter.className} min-h-full`}>
         <AuthProvider>
           <ThemeProvider>
-            <CurriculumProvider>
-              {children}
-            </CurriculumProvider>
+            <LanguageProvider>
+              <CurriculumProvider>
+                {children}
+              </CurriculumProvider>
+            </LanguageProvider>
           </ThemeProvider>
         </AuthProvider>
       </body>

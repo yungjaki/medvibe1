@@ -6,12 +6,13 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useCurriculum } from '@/context/CurriculumContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 const mobileNav = [
   { href: '/dashboard', icon: '🏠', label: 'Начало' },
   { href: '/study',     icon: '📖', label: 'Конспект' },
   { href: '/quiz',      icon: '🧪', label: 'Тест' },
-  { href: '/anatomy',   icon: '🦴', label: '3D Атлас' },
+  { href: '/brain',     icon: '🧠', label: 'Мозък' },
   { href: '/profile',   icon: '👤', label: 'Профил' },
 ];
 
@@ -21,6 +22,7 @@ const sidebarNav = [
   { href: '/quiz',      icon: '🧪', label: 'Тест' },
   { href: '/games',     icon: '🎮', label: 'Игри' },
   { href: '/anatomy',   icon: '🦴', label: '3D Атлас' },
+  { href: '/brain',     icon: '🧠', label: 'Мозък' },
   { href: '/subjects',  icon: '📚', label: 'Предмети' },
   { href: '/profile',   icon: '👤', label: 'Профил' },
 ];
@@ -29,6 +31,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, profile, loading } = useAuth();
   const { t, mode } = useTheme();
   const { university } = useCurriculum();
+  const { lang, toggleLang } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -168,6 +171,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+
+        {/* Language Toggle */}
+        <div className="px-3 pb-2">
+          <button
+            onClick={toggleLang}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
+              mode === 'sharp'
+                ? 'bg-violet-950/40 border border-violet-700/30 text-violet-300 hover:bg-violet-900/50'
+                : 'bg-purple-50 border border-purple-200 text-purple-600 hover:bg-purple-100'
+            }`}
+          >
+            <span>🔤 Термини</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+              lang === 'latin'
+                ? 'bg-violet-500 text-white'
+                : mode === 'sharp' ? 'bg-white/10 text-gray-400' : 'bg-gray-200 text-gray-500'
+            }`}>
+              {lang === 'latin' ? 'LAT' : 'БГ'}
+            </span>
+          </button>
+        </div>
 
         {/* Bottom tagline */}
         <div className="p-4 flex-shrink-0">

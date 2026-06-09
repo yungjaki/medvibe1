@@ -18,7 +18,17 @@
       "Bash(curl -k -s \"https://caskanatomy.info/open3dviewer/js/babylon.js\")",
       "Bash(curl -k -s -o /dev/null -w \"%{http_code}\" \"https://caskanatomy.info/open3dviewer/models.json\")",
       "Bash(curl -k -s -o /dev/null -w \"%{http_code}\" \"https://caskanatomy.info/open3dviewer/config.json\")",
-      "Bash(curl -k -s -o /dev/null -w \"%{http_code}\" \"https://caskanatomy.info/open3dmodelfiles/muscles-thorax-abdomen-back-glb.zip\")"
+      "Bash(curl -k -s -o /dev/null -w \"%{http_code}\" \"https://caskanatomy.info/open3dmodelfiles/muscles-thorax-abdomen-back-glb.zip\")",
+      "Read(//c/Users/dimit/.claude/plugins/cache/ui-ux-pro-max-skill/ui-ux-pro-max/2.5.0/.claude/skills/ui-ux-pro-max/**)",
+      "Bash(python3 scripts/search.py \"medical education healthcare quiz anatomy study learning student\" --design-system -p \"MedVibe\" -f markdown)",
+      "Bash(Get-ChildItem -Recurse \"C:\\\\Users\\\\dimit\\\\.claude\\\\plugins\\\\cache\\\\ui-ux-pro-max-skill\")",
+      "PowerShell(Get-ChildItem -Recurse \"C:\\\\Users\\\\dimit\\\\.claude\\\\plugins\\\\cache\\\\ui-ux-pro-max-skill\" | Select-Object -First 60 | ForEach-Object { $_.FullName })",
+      "Bash(cd \"C:\\\\Users\\\\dimit\\\\.claude\\\\plugins\\\\cache\\\\ui-ux-pro-max-skill\\\\ui-ux-pro-max\\\\2.5.0\\\\src\\\\ui-ux-pro-max\" && python3 scripts/search.py \"medical education healthcare quiz anatomy study learning student\" --design-system -p \"MedVibe\" -f markdown 2>&1)",
+      "Bash(python3 scripts/search.py \"medical education study quiz gamification\" --domain color -n 3)",
+      "Bash(python3 scripts/search.py \"education learning clean professional\" --domain typography -n 3)",
+      "Bash(python3 scripts/search.py \"nextjs\" --stack nextjs)",
+      "Bash(python3 scripts/search.py \"medical education gamification modern dark vibrant student\" --design-system -p \"MedVibe\" -f markdown)",
+      "Bash(cd /mnt/c/Users/dimit/Documents/Projects/Home/medvibe && npx next build 2>&1 | tail -40)"
     ]
   }
 }

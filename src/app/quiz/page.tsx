@@ -5,7 +5,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
-import { questions, subjects, Question } from '@/lib/data/questions';
+import { questions as baseQuestions, subjects, Question } from '@/lib/data/questions';
+import { brainQuestions } from '@/lib/data/brainQuestions';
+
+// Merge all questions (base + brain)
+const questions = [...baseQuestions, ...brainQuestions];
 
 type Phase = 'setup' | 'quiz' | 'results';
 
